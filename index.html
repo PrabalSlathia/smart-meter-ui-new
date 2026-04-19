@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ Energy Real-time Dashboard</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --bg-soft: #10192b;
+      --panel: #131d30;
+      --panel-2: #19253a;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8eef8;
+      --muted: #9bacbf;
+      --faint: #73839a;
+      --power: #f59e0b;
+      --import: #38bdf8;
+      --export: #4ade80;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --shadow: 0 18px 40px rgba(0,0,0,0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(245,158,11,0.10), transparent 18%),
+        radial-gradient(circle at top right, rgba(56,189,248,0.08), transparent 20%),
+        linear-gradient(180deg, var(--bg-soft), var(--bg));
+    }
+
+    .container {
+      width: min(1140px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .plug-badge {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 1.8rem;
+      background: linear-gradient(180deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08));
+      border: 1px solid rgba(245,158,11,0.18);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.9rem, 4vw, 2.8rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+      line-height: 1.55;
+      font-size: 0.98rem;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      font-size: 0.92rem;
+      color: var(--text);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #94a3b8;
+    }
+
+    .dot.ok { background: var(--export); }
+    .dot.warn { background: var(--warning); }
+    .dot.off { background: var(--danger); }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 26px;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .main-reading {
+      margin: 18px 0 10px;
+      font-size: clamp(3.1rem, 8vw, 5.7rem);
+      line-height: 0.95;
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      color: var(--power);
+    }
+
+    .main-reading .unit {
+      font-size: 0.28em;
+      margin-left: 8px;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .state-copy {
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .meta-copy {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .side-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .metric-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+    }
+
+    .metric-card .label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .metric-card .value {
+      font-size: 1.55rem;
+      line-height: 1.05;
+      font-weight: 800;
+    }
+
+    .metric-card .value small {
+      font-size: 0.48em;
+      color: var(--muted);
+      margin-left: 6px;
+      font-weight: 600;
+    }
+
+    .import { color: var(--import); }
+    .export { color: var(--export); }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .info-card {
+      padding: 20px;
+    }
+
+    .info-card .label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.76rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .info-card .value {
+      font-size: 1.18rem;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .info-card .desc {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .section {
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 1.16rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .trend-wrap {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .sparkline {
+      height: 160px;
+      width: 100%;
+      display: block;
+    }
+
+    .trend-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .insight {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.94rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 13px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.94rem;
+    }
+
+    th {
+      text-align: left;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    td:nth-child(3),
+    td:nth-child(4),
+    td:nth-child(5),
+    th:nth-child(3),
+    th:nth-child(4),
+    th:nth-child(5) {
+      text-align: right;
+    }
+
+    tbody tr:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge.live {
+      color: #bbf7d0;
+      background: rgba(34,197,94,0.12);
+      border-color: rgba(34,197,94,0.20);
+    }
+
+    .badge.history {
+      color: #cbd5e1;
+      background: rgba(148,163,184,0.10);
+      border-color: rgba(148,163,184,0.15);
+    }
+
+    .muted-block {
+      color: var(--muted);
+      text-align: center;
+      padding: 22px 12px;
+    }
+
+    .small {
+      color: var(--faint);
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 960px) {
+      .hero-grid,
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        width: min(100% - 20px, 1000px);
+        padding-top: 18px;
+        padding-bottom: 24px;
+      }
+
+      .brand {
+        align-items: center;
+      }
+
+      .hero-card,
+      .section,
+      .info-card {
+        padding: 18px;
+      }
+
+      .side-grid {
+        grid-template-columns: 1fr;
+      }
+
+      th:nth-child(4),
+      td:nth-child(4),
+      th:nth-child(5),
+      td:nth-child(5) {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="plug-badge" aria-hidden="true">🔌</div>
+        <div>
+          <h1>Energy Monitor</h1>
+          <p class="subtitle">
+            A simple household dashboard that helps home users understand current power use,
+            imported energy, exported energy, and whether the meter is sending fresh readings.
+          </p>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="pill"><span id="api-dot" class="dot"></span><span id="api-status">Checking API...</span></div>
+        <div class="pill"><span id="meter-dot" class="dot"></span><span id="meter-status">Waiting for meter data</span></div>
+        <div class="pill">Refresh every 10s</div>
+        <div class="pill" id="last-ui-update">Screen updated: --</div>
+      </div>
+    </header>
+
+    <section class="hero-grid">
+      <article class="panel hero-card">
+        <div>
+          <div class="eyebrow">Live power</div>
+          <div id="main-power" class="main-reading">--<span class="unit">W</span></div>
+          <div id="main-state" class="state-copy">Waiting for the first smart meter sample.</div>
+          <div id="main-explainer" class="meta-copy">
+            Once the meter is connected, this area will show whether the home is currently drawing power,
+            exporting power, or sitting near idle.
+          </div>
+        </div>
+        <div class="meta-copy" id="main-timestamp">Last meter sample: --</div>
+      </article>
+
+      <aside class="panel side-grid">
+        <div class="metric-card">
+          <div class="label">Imported energy</div>
+          <div id="import-total" class="value import">--<small>kWh</small></div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Exported energy</div>
+          <div id="export-total" class="value export">--<small>kWh</small></div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Data freshness</div>
+          <div id="freshness-value" class="value">Waiting...</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Household state</div>
+          <div id="household-state" class="value">Unknown</div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="info-grid">
+      <article class="panel info-card">
+        <div class="label">What this means</div>
+        <div class="value">Consumer-friendly overview</div>
+        <div class="desc">
+          This dashboard is designed for home users, so it focuses on understandable energy information
+          instead of raw technical meter output.
+        </div>
+      </article>
+
+      <article class="panel info-card">
+        <div class="label">Current session</div>
+        <div id="samples-count" class="value">0 samples loaded</div>
+        <div class="desc">
+          Recent samples from the API are shown below in a simple history table.
+        </div>
+      </article>
+
+      <article class="panel info-card">
+        <div class="label">Connection note</div>
+        <div id="connection-note" class="value">Meter not connected yet</div>
+        <div class="desc">
+          The page can be online even when the meter is not yet sending fresh readings.
+        </div>
+      </article>
+    </section>
+
+    <section class="panel section">
+      <div class="section-head">
+        <div>
+          <h2>Recent power trend</h2>
+          <p>A quick visual to help users spot changes in household power use.</p>
+        </div>
+      </div>
+
+      <div class="trend-wrap">
+        <svg id="trend-chart" class="sparkline" viewBox="0 0 600 160" preserveAspectRatio="none" aria-label="Recent power trend"></svg>
+      </div>
+
+      <div class="trend-meta">
+        <span id="trend-min">Min: --</span>
+        <span id="trend-max">Max: --</span>
+        <span id="trend-range">Range: --</span>
+      </div>
+
+      <div id="trend-insight" class="insight">
+        Waiting for enough meter readings to describe recent energy behavior.
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-head">
+        <div>
+          <h2>Recent readings</h2>
+          <p>Compact history view for the latest meter samples.</p>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Power</th>
+              <th>Import</th>
+              <th>Export</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr>
+              <td colspan="5" class="muted-block">Waiting for data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:10px;">
+        Tip: imported energy means energy taken from the grid, while exported energy means energy sent back out.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const REFRESH_MS = 10000;
+
+    function formatTime(timestamp) {
+      if (timestamp && timestamp._seconds) {
+        return new Date(timestamp._seconds * 1000);
+      }
+      if (timestamp) {
+        return new Date(timestamp);
+      }
+      return null;
+    }
+
+    function formatTimeLabel(date) {
+      if (!date || Number.isNaN(date.getTime())) return 'Unknown time';
+      return date.toLocaleString();
+    }
+
+    function formatShort(date) {
+      if (!date || Number.isNaN(date.getTime())) return 'Unknown';
+      return date.toLocaleString([], {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    function getHouseholdState(power) {
+      if (power > 5) return 'Drawing from grid';
+      if (power < -5) return 'Sending power out';
+      return 'Near idle';
+    }
+
+    function getFreshnessText(date) {
+      if (!date || Number.isNaN(date.getTime())) return { text: 'Unknown', level: 'off' };
+
+      const diffMs = Date.now() - date.getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+      const diffMin = Math.floor(diffSec / 60);
+      const diffHour = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHour / 24);
+
+      if (diffSec < 20) return { text: 'Fresh', level: 'ok' };
+      if (diffMin < 5) return { text: `${diffMin} min old`, level: 'warn' };
+      if (diffHour < 24) return { text: `${diffHour} h old`, level: 'warn' };
+      return { text: `${diffDay} day(s) old`, level: 'off' };
+    }
+
+    function drawTrend(data) {
+      const svg = document.getElementById('trend-chart');
+      const width = 600;
+      const height = 160;
+      const pad = 18;
+      const values = data.map(d => Number(d.active_power_w || 0));
+
+      if (!values.length) {
+        svg.innerHTML = '';
+        return { min: 0, max: 0, range: 0 };
+      }
+
+      const min = Math.min(...values, 0);
+      const max = Math.max(...values, 0);
+      const range = Math.max(max - min, 1);
+
+      const points = values.map((v, i) => {
+        const x = pad + (i * (width - pad * 2)) / Math.max(values.length - 1, 1);
+        const y = height - pad - ((v - min) / range) * (height - pad * 2);
+        return `${x},${y}`;
+      }).join(' ');
+
+      const baseY = height - pad - ((0 - min) / range) * (height - pad * 2);
+      const area = `${pad},${height - pad} ${points} ${width - pad},${height - pad}`;
+
+      svg.innerHTML = `
+        <line x1="${pad}" y1="${baseY}" x2="${width - pad}" y2="${baseY}" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4 4"></line>
+        <polyline points="${area}" fill="rgba(245,158,11,0.10)" stroke="none"></polyline>
+        <polyline points="${points}" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      `;
+
+      return { min, max, range };
+    }
+
+    function getTrendInsight(values) {
+      if (!values.length) return 'Waiting for enough meter readings to describe recent energy behavior.';
+
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const spread = Math.abs(max - min);
+      const latest = values[values.length - 1];
+
+      if (spread < 1) {
+        return 'Recent readings are almost flat, which usually means the household load is currently very stable or no fresh live data is arriving yet.';
+      }
+
+      if (latest > 5) {
+        return 'The latest reading suggests the home is currently drawing power from the grid.';
+      }
+
+      if (latest < -5) {
+        return 'The latest reading suggests the home is currently exporting power back out.';
+      }
+
+      return 'The recent readings show only small movement around idle power levels.';
+    }
+
+    function renderEmptyState() {
+      document.getElementById('api-status').textContent = 'API reachable';
+      document.getElementById('api-dot').className = 'dot ok';
+      document.getElementById('meter-status').textContent = 'No meter samples yet';
+      document.getElementById('meter-dot').className = 'dot warn';
+      document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
+
+      document.getElementById('main-power').innerHTML = `--<span class="unit">W</span>`;
+      document.getElementById('main-state').textContent = 'Waiting for the first smart meter sample.';
+      document.getElementById('main-explainer').textContent = 'The dashboard is running, but it has not received usable live meter data yet.';
+      document.getElementById('main-timestamp').textContent = 'Last meter sample: --';
+
+      document.getElementById('import-total').innerHTML = `--<small>kWh</small>`;
+      document.getElementById('export-total').innerHTML = `--<small>kWh</small>`;
+      document.getElementById('freshness-value').textContent = 'Waiting...';
+      document.getElementById('household-state').textContent = 'Unknown';
+
+      document.getElementById('samples-count').textContent = '0 samples loaded';
+      document.getElementById('connection-note').textContent = 'Meter not connected yet';
+
+      document.getElementById('trend-min').textContent = 'Min: --';
+      document.getElementById('trend-max').textContent = 'Max: --';
+      document.getElementById('trend-range').textContent = 'Range: --';
+      document.getElementById('trend-insight').textContent = 'Waiting for enough meter readings to describe recent energy behavior.';
+      document.getElementById('trend-chart').innerHTML = '';
+
+      document.getElementById('history-body').innerHTML = `
+        <tr>
+          <td colspan="5" class="muted-block">No meter readings yet. Connect the smart meter to begin showing household energy data.</td>
+        </tr>
+      `;
+    }
+
+    function renderErrorState() {
+      document.getElementById('api-status').textContent = 'API not reachable';
+      document.getElementById('api-dot').className = 'dot off';
+      document.getElementById('meter-status').textContent = 'Meter status unknown';
+      document.getElementById('meter-dot').className = 'dot off';
+      document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
+      document.getElementById('connection-note').textContent = 'Connection interrupted';
+
+      document.getElementById('history-body').innerHTML = `
+        <tr>
+          <td colspan="5" class="muted-block" style="color:#fecaca;">Connection interrupted. The dashboard cannot reach /api/data right now.</td>
+        </tr>
+      `;
+    }
+
+    function renderDashboard(data) {
+      const latest = data[0];
+      const power = Number(latest.active_power_w || 0);
+      const importKwh = Number(latest.total_import_kwh || 0);
+      const exportKwh = Number(latest.total_export_kwh || 0);
+      const latestDate = formatTime(latest.timestamp);
+      const freshness = getFreshnessText(latestDate);
+      const values = data.slice(0, 12).reverse().map(d => Number(d.active_power_w || 0));
+      const stats = drawTrend(data.slice(0, 12).reverse());
+
+      document.getElementById('api-status').textContent = 'API reachable';
+      document.getElementById('api-dot').className = 'dot ok';
+      document.getElementById('meter-status').textContent = freshness.level === 'ok' ? 'Meter sending fresh data' : 'Meter data is stale';
+      document.getElementById('meter-dot').className = `dot ${freshness.level}`;
+      document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
+
+      document.getElementById('main-power').innerHTML = `${power.toFixed(1)}<span class="unit">W</span>`;
+      document.getElementById('main-state').textContent = getHouseholdState(power);
+      document.getElementById('main-explainer').textContent =
+        freshness.level === 'ok'
+          ? 'This is the latest live power reading from the smart meter.'
+          : 'The dashboard has data, but the most recent meter sample is not fresh.';
+      document.getElementById('main-timestamp').textContent = `Last meter sample: ${formatTimeLabel(latestDate)}`;
+
+      document.getElementById('import-total').innerHTML = `${importKwh.toFixed(3)}<small>kWh</small>`;
+      document.getElementById('export-total').innerHTML = `${exportKwh.toFixed(3)}<small>kWh</small>`;
+      document.getElementById('freshness-value').textContent = freshness.text;
+      document.getElementById('household-state').textContent = getHouseholdState(power);
+
+      document.getElementById('samples-count').textContent = `${data.length} samples loaded`;
+      document.getElementById('connection-note').textContent =
+        freshness.level === 'ok' ? 'Live meter data visible' : 'Dashboard online, meter data stale';
+
+      document.getElementById('trend-min').textContent = `Min: ${stats.min.toFixed(1)} W`;
+      document.getElementById('trend-max').textContent = `Max: ${stats.max.toFixed(1)} W`;
+      document.getElementById('trend-range').textContent = `Range: ${stats.range.toFixed(1)} W`;
+      document.getElementById('trend-insight').textContent = getTrendInsight(values);
+
+      document.getElementById('history-body').innerHTML = data.slice(0, 10).map((d, index) => {
+        const rowDate = formatTime(d.timestamp);
+        const rowPower = Number(d.active_power_w || 0);
+        const rowImport = Number(d.total_import_kwh || 0);
+        const rowExport = Number(d.total_export_kwh || 0);
+
+        return `
+          <tr>
+            <td><span class="badge ${index === 0 ? 'live' : 'history'}">${index === 0 ? 'Live' : 'History'}</span></td>
+            <td>${formatShort(rowDate)}</td>
+            <td><strong>${rowPower.toFixed(1)} W</strong></td>
+            <td>${rowImport.toFixed(3)} kWh</td>
+            <td>${rowExport.toFixed(3)} kWh</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function update() {
+      try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+          renderEmptyState();
+          return;
+        }
+
+        renderDashboard(data);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        renderErrorState();
+      }
+    }
+
+    renderEmptyState();
+    update();
+    setInterval(update, REFRESH_MS);
+  </script>
+</body>
+</html>

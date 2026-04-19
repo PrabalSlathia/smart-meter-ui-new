@@ -1,0 +1,4 @@
+node_modules/
+.env
+.env.*
+smart-meter-project-497ac-firebase-adminsdk-fbsvc-98a2a903d2.json
