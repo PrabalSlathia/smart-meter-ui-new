@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import serviceAccount from '../smart-meter-project-497ac-firebase-adminsdk-fbsvc-98a2a903d2.json' with { type: 'json' };
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 if (!admin.apps.length) {
   const hasEnvCreds =
