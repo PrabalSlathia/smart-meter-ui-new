@@ -9,7 +9,7 @@ let latestObisData = null;
 const options = {
     protocol: "SmlProtocol",
     transport: "SerialResponseTransport",
-    transportSerialPort: "/dev/tty.usbserial-130", 
+    transportSerialPort: "/dev/COM5", 
     transportSerialBaudrate: 9600,
     obisNameLanguage: 'en',
     obisFallbackMedium: 6
