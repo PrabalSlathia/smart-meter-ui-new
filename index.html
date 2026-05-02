@@ -6,780 +6,632 @@
   <title>⚡ Energy Real-time Dashboard</title>
   <style>
     :root {
-      --bg: #0b1220;
-      --bg-soft: #10192b;
-      --panel: #131d30;
-      --panel-2: #19253a;
-      --border: rgba(255,255,255,0.08);
-      --text: #e8eef8;
-      --muted: #9bacbf;
-      --faint: #73839a;
-      --power: #f59e0b;
-      --import: #38bdf8;
-      --export: #4ade80;
-      --danger: #f87171;
-      --warning: #fbbf24;
-      --radius-lg: 22px;
-      --radius-md: 16px;
-      --shadow: 0 18px 40px rgba(0,0,0,0.28);
+      --bg:#0b1220;--bg-soft:#10192b;--panel:#131d30;--panel-2:#19253a;
+      --border:rgba(255,255,255,0.08);--text:#e8eef8;--muted:#9bacbf;--faint:#73839a;
+      --power:#f59e0b;--import:#38bdf8;--export:#4ade80;--danger:#f87171;--warning:#fbbf24;
+      --radius-lg:22px;--radius-md:16px;--shadow:0 18px 40px rgba(0,0,0,0.28);
     }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(245,158,11,0.10), transparent 18%),
-        radial-gradient(circle at top right, rgba(56,189,248,0.08), transparent 20%),
-        linear-gradient(180deg, var(--bg-soft), var(--bg));
-    }
-
-    .container {
-      width: min(1140px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 28px 0 40px;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 18px;
-      flex-wrap: wrap;
-      margin-bottom: 22px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-    }
-
-    .plug-badge {
-      width: 58px;
-      height: 58px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      font-size: 1.8rem;
-      background: linear-gradient(180deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08));
-      border: 1px solid rgba(245,158,11,0.18);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-      flex-shrink: 0;
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: clamp(1.9rem, 4vw, 2.8rem);
-      line-height: 1.02;
-      letter-spacing: -0.04em;
-    }
-
-    .subtitle {
-      margin: 0;
-      color: var(--muted);
-      max-width: 62ch;
-      line-height: 1.55;
-      font-size: 0.98rem;
-    }
-
-    .status-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      font-size: 0.92rem;
-      color: var(--text);
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: #94a3b8;
-    }
-
-    .dot.ok { background: var(--export); }
-    .dot.warn { background: var(--warning); }
-    .dot.off { background: var(--danger); }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1.35fr 1fr;
-      gap: 18px;
-      margin-bottom: 18px;
-    }
-
-    .panel {
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-    }
-
-    .hero-card {
-      padding: 26px;
-      min-height: 260px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 0.75rem;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .main-reading {
-      margin: 18px 0 10px;
-      font-size: clamp(3.1rem, 8vw, 5.7rem);
-      line-height: 0.95;
-      font-weight: 800;
-      letter-spacing: -0.06em;
-      color: var(--power);
-    }
-
-    .main-reading .unit {
-      font-size: 0.28em;
-      margin-left: 8px;
-      color: var(--muted);
-      font-weight: 600;
-      letter-spacing: 0;
-    }
-
-    .state-copy {
-      color: var(--text);
-      font-size: 1rem;
-      margin-bottom: 8px;
-    }
-
-    .meta-copy {
-      color: var(--muted);
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-
-    .side-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      padding: 18px;
-    }
-
-    .metric-card {
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 18px;
-    }
-
-    .metric-card .label {
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-size: 0.78rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .metric-card .value {
-      font-size: 1.55rem;
-      line-height: 1.05;
-      font-weight: 800;
-    }
-
-    .metric-card .value small {
-      font-size: 0.48em;
-      color: var(--muted);
-      margin-left: 6px;
-      font-weight: 600;
-    }
-
-    .import { color: var(--import); }
-    .export { color: var(--export); }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-
-    .info-card {
-      padding: 20px;
-    }
-
-    .info-card .label {
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-size: 0.76rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .info-card .value {
-      font-size: 1.18rem;
-      font-weight: 800;
-      line-height: 1.3;
-    }
-
-    .info-card .desc {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.45;
-    }
-
-    .section {
-      padding: 22px;
-      margin-bottom: 18px;
-    }
-
-    .section-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    .section-head h2 {
-      margin: 0;
-      font-size: 1.16rem;
-      letter-spacing: -0.02em;
-    }
-
-    .section-head p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 0.94rem;
-    }
-
-    .trend-wrap {
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 12px;
-    }
-
-    .sparkline {
-      height: 160px;
-      width: 100%;
-      display: block;
-    }
-
-    .trend-meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .insight {
-      margin-top: 14px;
-      padding: 14px 16px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      line-height: 1.5;
-      font-size: 0.94rem;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th, td {
-      padding: 13px 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      font-size: 0.94rem;
-    }
-
-    th {
-      text-align: left;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 0.76rem;
-      font-weight: 700;
-    }
-
-    td:nth-child(3),
-    td:nth-child(4),
-    td:nth-child(5),
-    th:nth-child(3),
-    th:nth-child(4),
-    th:nth-child(5) {
-      text-align: right;
-    }
-
-    tbody tr:hover {
-      background: rgba(255,255,255,0.02);
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      border: 1px solid transparent;
-    }
-
-    .badge.live {
-      color: #bbf7d0;
-      background: rgba(34,197,94,0.12);
-      border-color: rgba(34,197,94,0.20);
-    }
-
-    .badge.history {
-      color: #cbd5e1;
-      background: rgba(148,163,184,0.10);
-      border-color: rgba(148,163,184,0.15);
-    }
-
-    .muted-block {
-      color: var(--muted);
-      text-align: center;
-      padding: 22px 12px;
-    }
-
-    .small {
-      color: var(--faint);
-      font-size: 0.88rem;
-    }
-
-    @media (max-width: 960px) {
-      .hero-grid,
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .container {
-        width: min(100% - 20px, 1000px);
-        padding-top: 18px;
-        padding-bottom: 24px;
-      }
-
-      .brand {
-        align-items: center;
-      }
-
-      .hero-card,
-      .section,
-      .info-card {
-        padding: 18px;
-      }
-
-      .side-grid {
-        grid-template-columns: 1fr;
-      }
-
-      th:nth-child(4),
-      td:nth-child(4),
-      th:nth-child(5),
-      td:nth-child(5) {
-        display: none;
-      }
-    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--text);background:radial-gradient(circle at top left,rgba(245,158,11,.10),transparent 18%),radial-gradient(circle at top right,rgba(56,189,248,.08),transparent 20%),linear-gradient(180deg,var(--bg-soft),var(--bg));}
+    .container{width:min(1160px,calc(100% - 32px));margin:0 auto;padding:28px 0 40px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+    .brand{display:flex;align-items:flex-start;gap:14px}
+    .plug-badge{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:1.8rem;background:linear-gradient(180deg,rgba(245,158,11,.18),rgba(245,158,11,.08));border:2px solid rgba(245,158,11,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.06);flex-shrink:0;position:relative;transition:border-color .4s,box-shadow .4s}
+    .plug-badge.db-connected{border-color:rgba(74,222,128,.55);box-shadow:0 0 18px rgba(74,222,128,.25),inset 0 1px 0 rgba(255,255,255,.06)}
+    .plug-badge.db-offline{border-color:rgba(248,113,113,.50);box-shadow:0 0 14px rgba(248,113,113,.18),inset 0 1px 0 rgba(255,255,255,.06)}
+    .plug-badge::after{content:'';position:absolute;inset:-4px;border-radius:22px;border:2px solid rgba(74,222,128,0);transition:border-color .4s;pointer-events:none}
+    .plug-badge.db-connected::after{border-color:rgba(74,222,128,.30);animation:plugPulse 2s ease-in-out infinite}
+    @keyframes plugPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.06)}}
+    .db-tag{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:999px;margin-top:6px;border:1px solid transparent;transition:background .4s,color .4s,border-color .4s}
+    .db-tag.connected{background:rgba(74,222,128,.12);color:#86efac;border-color:rgba(74,222,128,.22)}
+    .db-tag.disconnected{background:rgba(248,113,113,.10);color:#fca5a5;border-color:rgba(248,113,113,.20)}
+    .db-tag.checking{background:rgba(251,191,36,.10);color:#fde68a;border-color:rgba(251,191,36,.20)}
+    .db-tag-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+    h1{margin:0 0 5px;font-size:clamp(1.9rem,4vw,2.8rem);line-height:1.02;letter-spacing:-.04em}
+    .subtitle{margin:0;color:var(--muted);max-width:62ch;line-height:1.55;font-size:.98rem}
+    .status-row{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);font-size:.92rem;color:var(--text)}
+    .dot{width:10px;height:10px;border-radius:999px;background:#94a3b8}.dot.ok{background:var(--export)}.dot.warn{background:var(--warning)}.dot.off{background:var(--danger)}
+    .hero-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;margin-bottom:18px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01)),var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+    .hero-card{padding:26px;min-height:260px;display:flex;flex-direction:column;justify-content:space-between}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.12em;font-size:.75rem;color:var(--muted);font-weight:700}
+    .main-reading{margin:18px 0 10px;font-size:clamp(3.1rem,8vw,5.7rem);line-height:.95;font-weight:800;letter-spacing:-.06em;color:var(--power)}
+    .main-reading .unit{font-size:.28em;margin-left:8px;color:var(--muted);font-weight:600;letter-spacing:0}
+    .state-copy{color:var(--text);font-size:1rem;margin-bottom:8px}
+    .meta-copy{color:var(--muted);font-size:.95rem;line-height:1.5}
+    .side-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px}
+    .metric-card{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px}
+    .metric-card .label{color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-size:.78rem;font-weight:700;margin-bottom:10px}
+    .metric-card .value{font-size:1.55rem;line-height:1.05;font-weight:800}
+    .metric-card .value small{font-size:.48em;color:var(--muted);margin-left:6px;font-weight:600}
+    .import{color:var(--import)}.export{color:var(--export)}
+    .info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+    .info-card{padding:20px}.info-card .label{color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-size:.76rem;font-weight:700;margin-bottom:10px}.info-card .value{font-size:1.18rem;font-weight:800;line-height:1.3}.info-card .desc{margin-top:8px;color:var(--muted);font-size:.92rem;line-height:1.45}
+    .section{padding:22px;margin-bottom:18px}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+    .section-head h2{margin:0;font-size:1.16rem;letter-spacing:-.02em}.section-head p{margin:4px 0 0;color:var(--muted);font-size:.94rem}
+    .time-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .time-bar select,.filter-bar select,.filter-bar input{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px 14px;font-size:.9rem;outline:none;transition:border-color .18s}
+    .time-bar select{min-width:160px}
+    .time-bar select:focus,.filter-bar select:focus,.filter-bar input:focus{border-color:rgba(245,158,11,.45)}
+    .time-bar select option,.filter-bar select option{background:#131d30}
+    .time-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.20);color:var(--power);font-size:.82rem;font-weight:700;letter-spacing:.04em}
+    .filter-count{font-size:.85rem;color:var(--faint);white-space:nowrap}
+    .filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .filter-bar input{flex:1;min-width:180px}.filter-bar input::placeholder{color:var(--faint)}
+    .filter-bar select{min-width:150px}
+    .clear-btn{padding:9px 14px;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:rgba(248,113,113,.08);color:#fca5a5;transition:background .18s}.clear-btn:hover{background:rgba(248,113,113,.16)}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+    .summary-card{background:var(--panel-2);border:1px solid var(--border);border-radius:14px;padding:16px}
+    .summary-card .k{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px}
+    .summary-card .v{font-size:1.22rem;font-weight:800}
+    .summary-card .v small{font-size:.55em;color:var(--muted);margin-left:4px;font-weight:600}
+    .trend-wrap{background:var(--panel-2);border:1px solid var(--border);border-radius:16px;padding:12px;overflow-x:auto}
+    .sparkline{height:160px;width:100%;display:block}
+    .trend-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:.9rem}
+    .trend-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .trend-btn{padding:5px 12px;border-radius:999px;font-size:.8rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);transition:all .18s}
+    .trend-btn.active{background:rgba(245,158,11,.18);color:var(--power);border-color:rgba(245,158,11,.30)}.trend-btn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+    .insight{margin-top:14px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--muted);line-height:1.5;font-size:.94rem}
+    /* Chart legend */
+    .chart-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+    .legend-dot{width:10px;height:10px;border-radius:50%}
+    table{width:100%;border-collapse:collapse}th,td{padding:13px 10px;border-bottom:1px solid rgba(255,255,255,.06);font-size:.94rem}th{text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.76rem;font-weight:700}
+    td:nth-child(3),td:nth-child(4),td:nth-child(5),th:nth-child(3),th:nth-child(4),th:nth-child(5){text-align:right}
+    tbody tr:hover{background:rgba(255,255,255,.02)}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:.78rem;font-weight:700;border:1px solid transparent}.badge.live{color:#bbf7d0;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.20)}.badge.history{color:#cbd5e1;background:rgba(148,163,184,.10);border-color:rgba(148,163,184,.15)}
+    .muted-block{color:var(--muted);text-align:center;padding:22px 12px}.small{color:var(--faint);font-size:.88rem}
+    tr.search-match td{background:rgba(245,158,11,.05)}
+    .no-data-msg{color:var(--faint);text-align:center;padding:32px 12px;font-size:.96rem}
+    @media(max-width:960px){.hero-grid,.info-grid,.summary-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:640px){.container{padding-top:18px;padding-bottom:24px}.hero-card,.section,.info-card{padding:18px}.side-grid,.info-grid,.summary-grid{grid-template-columns:1fr}th:nth-child(4),td:nth-child(4),th:nth-child(5),td:nth-child(5){display:none}}
   </style>
 </head>
 <body>
-  <main class="container">
-    <header class="header">
-      <div class="brand">
-        <div class="plug-badge" aria-hidden="true">🔌</div>
-        <div>
-          <h1>Energy Monitor</h1>
-          <p class="subtitle">
-            A simple household dashboard that helps home users understand current power use,
-            imported energy, exported energy, and whether the meter is sending fresh readings.
-          </p>
-        </div>
+<main class="container">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="brand">
+      <div class="plug-badge checking" id="plug-badge" aria-label="Checking connection"><span id="plug-emoji">🔌</span></div>
+      <div>
+        <h1>Energy Monitor</h1>
+        <p class="subtitle">A simple household dashboard that helps home users understand current power use, imported energy, exported energy, and whether the meter is sending fresh readings.</p>
+        <span class="db-tag checking" id="db-tag"><span class="db-tag-dot"></span><span id="db-tag-text">Checking database…</span></span>
       </div>
+    </div>
+    <div class="status-row">
+      <div class="pill"><span id="api-dot" class="dot"></span><span id="api-status">Checking API...</span></div>
+      <div class="pill"><span id="meter-dot" class="dot"></span><span id="meter-status">Waiting for meter data</span></div>
+      <div class="pill">Refresh every 10s</div>
+      <div class="pill" id="last-ui-update">Screen updated: --</div>
+    </div>
+  </header>
 
-      <div class="status-row">
-        <div class="pill"><span id="api-dot" class="dot"></span><span id="api-status">Checking API...</span></div>
-        <div class="pill"><span id="meter-dot" class="dot"></span><span id="meter-status">Waiting for meter data</span></div>
-        <div class="pill">Refresh every 10s</div>
-        <div class="pill" id="last-ui-update">Screen updated: --</div>
+  <!-- ── LIVE READINGS ── -->
+  <section class="hero-grid">
+    <article class="panel hero-card">
+      <div>
+        <div class="eyebrow">Live power</div>
+        <div id="main-power" class="main-reading">--<span class="unit">W</span></div>
+        <div id="main-state" class="state-copy">Waiting for the first smart meter sample.</div>
+        <div id="main-explainer" class="meta-copy">Once the meter is connected, this area will show whether the home is currently drawing power, exporting power, or sitting near idle.</div>
       </div>
-    </header>
+      <div class="meta-copy" id="main-timestamp">Last meter sample: --</div>
+    </article>
+    <aside class="panel side-grid">
+      <div class="metric-card"><div class="label">Imported energy</div><div id="import-total" class="value import">--<small>kWh</small></div></div>
+      <div class="metric-card"><div class="label">Exported energy</div><div id="export-total" class="value export">--<small>kWh</small></div></div>
+      <div class="metric-card"><div class="label">Data freshness</div><div id="freshness-value" class="value">Waiting...</div></div>
+      <div class="metric-card"><div class="label">Household state</div><div id="household-state" class="value">Unknown</div></div>
+    </aside>
+  </section>
 
-    <section class="hero-grid">
-      <article class="panel hero-card">
-        <div>
-          <div class="eyebrow">Live power</div>
-          <div id="main-power" class="main-reading">--<span class="unit">W</span></div>
-          <div id="main-state" class="state-copy">Waiting for the first smart meter sample.</div>
-          <div id="main-explainer" class="meta-copy">
-            Once the meter is connected, this area will show whether the home is currently drawing power,
-            exporting power, or sitting near idle.
-          </div>
-        </div>
-        <div class="meta-copy" id="main-timestamp">Last meter sample: --</div>
-      </article>
+  <!-- ── INFO CARDS ── -->
+  <section class="info-grid">
+    <article class="panel info-card"><div class="label">What this means</div><div class="value">Consumer-friendly overview</div><div class="desc">This dashboard is designed for home users, so it focuses on understandable energy information instead of raw technical meter output.</div></article>
+    <article class="panel info-card"><div class="label">Current session</div><div id="samples-count" class="value">0 samples loaded</div><div class="desc">Recent samples from the API are shown below in a simple history table.</div></article>
+    <article class="panel info-card"><div class="label">Connection note</div><div id="connection-note" class="value">Meter not connected yet</div><div class="desc">The page can be online even when the meter is not yet sending fresh readings.</div></article>
+  </section>
 
-      <aside class="panel side-grid">
-        <div class="metric-card">
-          <div class="label">Imported energy</div>
-          <div id="import-total" class="value import">--<small>kWh</small></div>
-        </div>
-        <div class="metric-card">
-          <div class="label">Exported energy</div>
-          <div id="export-total" class="value export">--<small>kWh</small></div>
-        </div>
-        <div class="metric-card">
-          <div class="label">Data freshness</div>
-          <div id="freshness-value" class="value">Waiting...</div>
-        </div>
-        <div class="metric-card">
-          <div class="label">Household state</div>
-          <div id="household-state" class="value">Unknown</div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="info-grid">
-      <article class="panel info-card">
-        <div class="label">What this means</div>
-        <div class="value">Consumer-friendly overview</div>
-        <div class="desc">
-          This dashboard is designed for home users, so it focuses on understandable energy information
-          instead of raw technical meter output.
-        </div>
-      </article>
-
-      <article class="panel info-card">
-        <div class="label">Current session</div>
-        <div id="samples-count" class="value">0 samples loaded</div>
-        <div class="desc">
-          Recent samples from the API are shown below in a simple history table.
-        </div>
-      </article>
-
-      <article class="panel info-card">
-        <div class="label">Connection note</div>
-        <div id="connection-note" class="value">Meter not connected yet</div>
-        <div class="desc">
-          The page can be online even when the meter is not yet sending fresh readings.
-        </div>
-      </article>
-    </section>
-
-    <section class="panel section">
-      <div class="section-head">
-        <div>
-          <h2>Recent power trend</h2>
-          <p>A quick visual to help users spot changes in household power use.</p>
-        </div>
+  <!-- ── TIME FILTER + AGGREGATED CHART ── -->
+  <section class="panel section">
+    <div class="section-head">
+      <div>
+        <h2>Usage by time period</h2>
+        <p>Select a time range to see how household energy use looks over days, weeks, or months.</p>
       </div>
+      <span class="time-badge" id="period-badge">Last 30 days · by day</span>
+    </div>
 
-      <div class="trend-wrap">
+    <!-- Time controls -->
+    <div class="time-bar">
+      <select id="time-filter" onchange="applyTimeFilter()">
+        <option value="7d">Last 7 days</option>
+        <option value="30d" selected>Last 30 days</option>
+        <option value="90d">Last 90 days</option>
+        <option value="365d">Last 12 months</option>
+        <option value="all">All data</option>
+      </select>
+      <select id="group-by" onchange="applyTimeFilter()">
+        <option value="day" selected>Group by day</option>
+        <option value="week">Group by week</option>
+        <option value="month">Group by month</option>
+      </select>
+      <span class="filter-count" id="time-filter-count"></span>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="summary-card"><div class="k">Avg power per period</div><div class="v" id="sum-avg-power">--<small>W</small></div></div>
+      <div class="summary-card"><div class="k">Peak power recorded</div><div class="v" id="sum-peak-power">--<small>W</small></div></div>
+      <div class="summary-card"><div class="k">Avg daily import</div><div class="v" id="sum-avg-import">--<small>kWh</small></div></div>
+      <div class="summary-card"><div class="k">Avg daily export</div><div class="v" id="sum-avg-export">--<small>kWh</small></div></div>
+    </div>
+
+    <!-- Aggregated chart -->
+    <div class="trend-wrap">
+      <div id="agg-scroll-inner" style="min-width:600px">
+        <svg id="agg-chart" class="sparkline" viewBox="0 0 600 160" preserveAspectRatio="none" aria-label="Average power per time period"></svg>
+      </div>
+    </div>
+    <div class="chart-legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#38bdf8"></span>Avg power per period</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;opacity:.5"></span>Peak power per period</span>
+    </div>
+    <div class="trend-meta">
+      <span id="agg-periods">Periods: --</span>
+      <span id="agg-min">Lowest avg: --</span>
+      <span id="agg-max">Highest avg: --</span>
+      <span id="agg-latest">Latest bucket: --</span>
+    </div>
+    <div id="agg-insight" class="insight">Select a time range to see average use per period and compare family energy behavior over time.</div>
+  </section>
+
+  <!-- ── RAW LIVE TREND ── -->
+  <section class="panel section">
+    <div class="section-head">
+      <div>
+        <h2>Recent live readings</h2>
+        <p>Raw meter samples — useful for spotting sudden spikes or drops.</p>
+      </div>
+      <div class="trend-controls">
+        <button class="trend-btn active" onclick="setTrendRange(20,this)">Last 20</button>
+        <button class="trend-btn" onclick="setTrendRange(50,this)">Last 50</button>
+        <button class="trend-btn" onclick="setTrendRange(100,this)">Last 100</button>
+        <button class="trend-btn" onclick="setTrendRange(0,this)">All</button>
+      </div>
+    </div>
+    <div class="trend-wrap">
+      <div id="trend-scroll-inner" style="min-width:600px">
         <svg id="trend-chart" class="sparkline" viewBox="0 0 600 160" preserveAspectRatio="none" aria-label="Recent power trend"></svg>
       </div>
+    </div>
+    <div class="trend-meta">
+      <span id="trend-min">Min: --</span>
+      <span id="trend-avg">Avg: --</span>
+      <span id="trend-max">Max: --</span>
+      <span id="trend-range">Range: --</span>
+      <span id="trend-points" style="color:var(--faint)">Points: --</span>
+    </div>
+    <div id="trend-insight" class="insight">Waiting for enough meter readings to describe recent energy behavior.</div>
+  </section>
 
-      <div class="trend-meta">
-        <span id="trend-min">Min: --</span>
-        <span id="trend-max">Max: --</span>
-        <span id="trend-range">Range: --</span>
+  <!-- ── READINGS TABLE ── -->
+  <section class="panel section">
+    <div class="section-head">
+      <div>
+        <h2>Filtered readings table</h2>
+        <p>All records within the selected time range. Use the filters below to narrow further.</p>
       </div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="search-input" placeholder="🔍 Search by time, power, import, export…" oninput="renderTable()" />
+      <select id="status-filter" onchange="renderTable()">
+        <option value="">All statuses</option>
+        <option value="live">Live only</option>
+        <option value="history">History only</option>
+      </select>
+      <select id="power-filter" onchange="renderTable()">
+        <option value="">Any power</option>
+        <option value="drawing">Drawing (&gt; 5 W)</option>
+        <option value="exporting">Exporting (&lt; −5 W)</option>
+        <option value="idle">Idle (−5 to 5 W)</option>
+      </select>
+      <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
+      <span class="filter-count" id="filter-count"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Status</th><th>Time</th><th>Power</th><th>Import</th><th>Export</th></tr></thead>
+        <tbody id="history-body"><tr><td colspan="5" class="muted-block">Waiting for data...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="small" style="margin-top:10px">Tip: imported energy means energy taken from the grid, while exported energy means energy sent back out.</div>
+  </section>
 
-      <div id="trend-insight" class="insight">
-        Waiting for enough meter readings to describe recent energy behavior.
-      </div>
-    </section>
+</main>
+<script>
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
+const REFRESH_MS = 10000;
+let allData        = [];   // full dataset from /api/data
+let filteredByTime = [];   // after time range filter
+let trendRange     = 20;   // live chart point count
 
-    <section class="panel section">
-      <div class="section-head">
-        <div>
-          <h2>Recent readings</h2>
-          <p>Compact history view for the latest meter samples.</p>
-        </div>
-      </div>
+// ─────────────────────────────────────────
+//  UTILITY HELPERS
+// ─────────────────────────────────────────
+function parseTs(ts) {
+  if (ts && ts._seconds) return new Date(ts._seconds * 1000);
+  if (ts) return new Date(ts);
+  return null;
+}
+function fmtLong(d)  { return (!d || isNaN(d)) ? 'Unknown' : d.toLocaleString(); }
+function fmtShort(d) {
+  if (!d || isNaN(d)) return 'Unknown';
+  return d.toLocaleString([], { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+function householdState(p) {
+  return p > 5 ? 'Drawing from grid' : p < -5 ? 'Sending power out' : 'Near idle';
+}
+function freshness(d) {
+  if (!d || isNaN(d)) return { text:'Unknown', level:'off' };
+  const s = Math.floor((Date.now() - d) / 1000), m = Math.floor(s/60), h = Math.floor(m/60), dy = Math.floor(h/24);
+  if (s < 20)  return { text:'Fresh',         level:'ok' };
+  if (m < 5)   return { text:`${m} min old`,  level:'warn' };
+  if (h < 24)  return { text:`${h} h old`,    level:'warn' };
+  return           { text:`${dy} day(s) old`, level:'off' };
+}
 
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Time</th>
-              <th>Power</th>
-              <th>Import</th>
-              <th>Export</th>
-            </tr>
-          </thead>
-          <tbody id="history-body">
-            <tr>
-              <td colspan="5" class="muted-block">Waiting for data...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="small" style="margin-top:10px;">
-        Tip: imported energy means energy taken from the grid, while exported energy means energy sent back out.
-      </div>
-    </section>
-  </main>
+// ─────────────────────────────────────────
+//  PLUG BADGE + DB TAG
+// ─────────────────────────────────────────
+function setDbStatus(s) {
+  const badge = document.getElementById('plug-badge');
+  const emoji = document.getElementById('plug-emoji');
+  const tag   = document.getElementById('db-tag');
+  const txt   = document.getElementById('db-tag-text');
+  badge.classList.remove('db-connected','db-offline','checking');
+  tag.classList.remove('connected','disconnected','checking');
+  if (s === 'connected') {
+    badge.classList.add('db-connected'); emoji.textContent = '🟢';
+    tag.classList.add('connected'); txt.textContent = 'Database connected';
+    badge.setAttribute('aria-label','Database connected');
+  } else if (s === 'frontend-only') {
+    badge.classList.add('db-offline'); emoji.textContent = '🔌';
+    tag.classList.add('disconnected'); txt.textContent = 'Frontend only — no DB data';
+    badge.setAttribute('aria-label','Frontend only — database not reached');
+  } else {
+    badge.classList.add('checking'); emoji.textContent = '🔌';
+    tag.classList.add('checking'); txt.textContent = 'Checking database…';
+    badge.setAttribute('aria-label','Checking database connection');
+  }
+}
 
-  <script>
-    const REFRESH_MS = 10000;
+// ─────────────────────────────────────────
+//  SVG LINE CHART  (reusable)
+// ─────────────────────────────────────────
+function drawLine(svgId, innerId, values, color, fillAlpha) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const CH = 160, pad = 18;
+  const W  = Math.max(600, values.length * 10);
+  svg.setAttribute('viewBox', `0 0 ${W} ${CH}`);
+  svg.style.minWidth = W + 'px';
+  if (innerId) document.getElementById(innerId).style.minWidth = W + 'px';
+  svg.innerHTML = '';
+  if (!values.length) return { min:0, max:0, avg:0 };
 
-    function formatTime(timestamp) {
-      if (timestamp && timestamp._seconds) {
-        return new Date(timestamp._seconds * 1000);
-      }
-      if (timestamp) {
-        return new Date(timestamp);
-      }
-      return null;
-    }
+  const mn  = Math.min(...values, 0);
+  const mx  = Math.max(...values, 0);
+  const rng = Math.max(mx - mn, 1);
+  const avg = values.reduce((a,b) => a+b, 0) / values.length;
+  const xOf = i => pad + (i * (W - pad*2)) / Math.max(values.length - 1, 1);
+  const yOf = v => CH - pad - ((v - mn) / rng) * (CH - pad*2);
+  const pts  = values.map((v,i) => `${xOf(i)},${yOf(v)}`).join(' ');
+  const baseY = yOf(0);
+  const area  = `${pad},${CH-pad} ${pts} ${W-pad},${CH-pad}`;
+  const dots  = values.length <= 60
+    ? values.map((v,i) => `<circle cx="${xOf(i)}" cy="${yOf(v)}" r="3.5" fill="${color}" opacity=".75"/>`).join('')
+    : '';
+  svg.innerHTML = `
+    <line x1="${pad}" y1="${baseY}" x2="${W-pad}" y2="${baseY}" stroke="rgba(255,255,255,.12)" stroke-dasharray="4 4"/>
+    <polyline points="${area}" fill="${color}" fill-opacity="${fillAlpha}" stroke="none"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}`;
+  return { min:mn, max:mx, avg };
+}
 
-    function formatTimeLabel(date) {
-      if (!date || Number.isNaN(date.getTime())) return 'Unknown time';
-      return date.toLocaleString();
-    }
+// ─────────────────────────────────────────
+//  LIVE TREND CHART
+// ─────────────────────────────────────────
+function setTrendRange(n, btn) {
+  trendRange = n;
+  document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  drawTrend();
+}
+function drawTrend() {
+  const data  = filteredByTime.length ? filteredByTime : allData;
+  const slice = trendRange === 0
+    ? [...data].reverse()
+    : [...data].slice(0, trendRange).reverse();
+  const vals  = slice.map(d => Number(d.active_power_w || 0));
+  if (!vals.length) { document.getElementById('trend-chart').innerHTML = ''; return; }
+  const lv  = vals[vals.length - 1];
+  const col = lv < -5 ? '#4ade80' : lv > 5 ? '#f59e0b' : '#94a3b8';
+  const st  = drawLine('trend-chart', 'trend-scroll-inner', vals, col, 0.08);
+  document.getElementById('trend-min').textContent   = `Min: ${st.min.toFixed(1)} W`;
+  document.getElementById('trend-max').textContent   = `Max: ${st.max.toFixed(1)} W`;
+  document.getElementById('trend-avg').textContent   = `Avg: ${st.avg.toFixed(1)} W`;
+  document.getElementById('trend-range').textContent = `Range: ${(st.max - st.min).toFixed(1)} W`;
+  document.getElementById('trend-points').textContent= `Points: ${vals.length}`;
+  const sp = Math.abs(st.max - st.min);
+  document.getElementById('trend-insight').textContent =
+    sp < 1           ? 'Recent readings are almost flat — household load is very stable or no fresh data is arriving.'
+    : lv > 5         ? 'The latest reading suggests the home is currently drawing power from the grid.'
+    : lv < -5        ? 'The latest reading suggests the home is currently exporting power back to the grid.'
+    :                  'Recent readings show small movement around idle power levels.';
+}
 
-    function formatShort(date) {
-      if (!date || Number.isNaN(date.getTime())) return 'Unknown';
-      return date.toLocaleString([], {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-    }
+// ─────────────────────────────────────────
+//  AGGREGATED FAMILY CHART
+// ─────────────────────────────────────────
+function getWeekNum(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day  = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const y1   = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - y1) / 86400000) + 1) / 7);
+}
+function bucketKey(dt, mode) {
+  if (mode === 'month') return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+  if (mode === 'week')  return `${dt.getFullYear()}-W${String(getWeekNum(dt)).padStart(2,'0')}`;
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function getPeriodLabel(key) {
+  // Convert YYYY-MM-DD → "3 May 2026", YYYY-MM → "May 2026", YYYY-Wnn → "Week nn"
+  if (/^\d{4}-W\d{2}$/.test(key)) return key.replace('-', ' ');
+  if (/^\d{4}-\d{2}$/.test(key)) {
+    const [y,m] = key.split('-');
+    return new Date(y, m-1, 1).toLocaleString([], { month:'long', year:'numeric' });
+  }
+  const d = new Date(key);
+  return isNaN(d) ? key : d.toLocaleString([], { day:'numeric', month:'short', year:'numeric' });
+}
 
-    function getHouseholdState(power) {
-      if (power > 5) return 'Drawing from grid';
-      if (power < -5) return 'Sending power out';
-      return 'Near idle';
-    }
+function buildAggregated(data) {
+  const mode = document.getElementById('group-by').value;
+  const map  = {};
+  data.forEach(item => {
+    const dt = parseTs(item.timestamp);
+    if (!dt || isNaN(dt)) return;
+    const k = bucketKey(dt, mode);
+    if (!map[k]) map[k] = { key:k, dt, power:[], import:[], export:[] };
+    map[k].power.push(Number(item.active_power_w || 0));
+    map[k].import.push(Number(item.total_import_kwh || 0));
+    map[k].export.push(Number(item.total_export_kwh || 0));
+  });
+  return Object.values(map).sort((a,b) => a.dt - b.dt).map(b => ({
+    label    : getPeriodLabel(b.key),
+    avgPower : b.power.reduce((x,y)=>x+y,0) / Math.max(b.power.length,1),
+    peakPower: Math.max(...b.power, 0),
+    avgImport: b.import.reduce((x,y)=>x+y,0) / Math.max(b.import.length,1),
+    avgExport: b.export.reduce((x,y)=>x+y,0) / Math.max(b.export.length,1)
+  }));
+}
 
-    function getFreshnessText(date) {
-      if (!date || Number.isNaN(date.getTime())) return { text: 'Unknown', level: 'off' };
+function drawAggChart(data) {
+  const agg = buildAggregated(data);
+  if (!agg.length) {
+    document.getElementById('agg-chart').innerHTML = '';
+    document.getElementById('agg-insight').textContent = 'No data available for this time range yet — try "All data" or wait for more readings to be collected.';
+    ['agg-periods','agg-min','agg-max','agg-latest'].forEach(id => document.getElementById(id).textContent = '--');
+    ['sum-avg-power','sum-peak-power','sum-avg-import','sum-avg-export'].forEach(id => document.getElementById(id).innerHTML = '--');
+    return;
+  }
+  const avgVals  = agg.map(x => x.avgPower);
+  const peakVals = agg.map(x => x.peakPower);
+  drawLine('agg-chart', 'agg-scroll-inner', avgVals, '#38bdf8', 0.08);
 
-      const diffMs = Date.now() - date.getTime();
-      const diffSec = Math.floor(diffMs / 1000);
-      const diffMin = Math.floor(diffSec / 60);
-      const diffHour = Math.floor(diffMin / 60);
-      const diffDay = Math.floor(diffHour / 24);
+  // Overlay peak as subtle dots — redraw on top
+  const svg = document.getElementById('agg-chart');
+  const W   = parseInt(svg.getAttribute('viewBox').split(' ')[2]);
+  const CH  = 160, pad = 18;
+  const mn  = Math.min(...avgVals, 0), mx = Math.max(...peakVals, mx || 0), rng = Math.max(mx - mn, 1);
+  const xOf = i => pad + (i * (W - pad*2)) / Math.max(agg.length - 1, 1);
+  const yOf = v => CH - pad - ((v - mn) / rng) * (CH - pad*2);
+  const peakDots = peakVals.map((v,i) =>
+    `<circle cx="${xOf(i)}" cy="${yOf(v)}" r="4" fill="#f59e0b" opacity=".45"/>`
+  ).join('');
+  svg.innerHTML += peakDots;
 
-      if (diffSec < 20) return { text: 'Fresh', level: 'ok' };
-      if (diffMin < 5) return { text: `${diffMin} min old`, level: 'warn' };
-      if (diffHour < 24) return { text: `${diffHour} h old`, level: 'warn' };
-      return { text: `${diffDay} day(s) old`, level: 'off' };
-    }
+  // Summary stats
+  const overallAvg    = avgVals.reduce((a,b)=>a+b,0) / Math.max(avgVals.length,1);
+  const overallPeak   = Math.max(...peakVals, 0);
+  const overallImport = agg.reduce((a,b)=>a+b.avgImport,0) / Math.max(agg.length,1);
+  const overallExport = agg.reduce((a,b)=>a+b.avgExport,0) / Math.max(agg.length,1);
+  document.getElementById('sum-avg-power').innerHTML  = `${overallAvg.toFixed(1)}<small>W</small>`;
+  document.getElementById('sum-peak-power').innerHTML = `${overallPeak.toFixed(1)}<small>W</small>`;
+  document.getElementById('sum-avg-import').innerHTML = `${overallImport.toFixed(3)}<small>kWh</small>`;
+  document.getElementById('sum-avg-export').innerHTML = `${overallExport.toFixed(3)}<small>kWh</small>`;
 
-    function drawTrend(data) {
-      const svg = document.getElementById('trend-chart');
-      const width = 600;
-      const height = 160;
-      const pad = 18;
-      const values = data.map(d => Number(d.active_power_w || 0));
+  // Trend meta
+  document.getElementById('agg-periods').textContent = `Periods: ${agg.length}`;
+  document.getElementById('agg-min').textContent     = `Lowest avg: ${Math.min(...avgVals).toFixed(1)} W`;
+  document.getElementById('agg-max').textContent     = `Highest avg: ${Math.max(...avgVals).toFixed(1)} W`;
+  document.getElementById('agg-latest').textContent  = `Latest: ${agg[agg.length-1].label}`;
 
-      if (!values.length) {
-        svg.innerHTML = '';
-        return { min: 0, max: 0, range: 0 };
-      }
+  // Insight text
+  const mode = document.getElementById('group-by').value;
+  const highest = agg.reduce((a,b) => b.avgPower > a.avgPower ? b : a);
+  const lowest  = agg.reduce((a,b) => b.avgPower < a.avgPower ? b : a);
+  document.getElementById('agg-insight').textContent =
+    `This chart shows average household power grouped by ${mode}. ` +
+    `The highest-use ${mode} in this range was ${highest.label} (${highest.avgPower.toFixed(1)} W avg). ` +
+    `The lowest-use ${mode} was ${lowest.label} (${lowest.avgPower.toFixed(1)} W avg). ` +
+    `Blue line = average power per ${mode}. Orange dots = peak reading in that ${mode}.`;
+}
 
-      const min = Math.min(...values, 0);
-      const max = Math.max(...values, 0);
-      const range = Math.max(max - min, 1);
+// ─────────────────────────────────────────
+//  TIME FILTER
+// ─────────────────────────────────────────
+const TIME_LABELS = { '7d':'Last 7 days', '30d':'Last 30 days', '90d':'Last 90 days', '365d':'Last 12 months', 'all':'All data' };
+const GROUP_LABELS = { 'day':'by day', 'week':'by week', 'month':'by month' };
 
-      const points = values.map((v, i) => {
-        const x = pad + (i * (width - pad * 2)) / Math.max(values.length - 1, 1);
-        const y = height - pad - ((v - min) / range) * (height - pad * 2);
-        return `${x},${y}`;
-      }).join(' ');
+function applyTimeFilter() {
+  const tf  = document.getElementById('time-filter').value;
+  const gb  = document.getElementById('group-by').value;
+  document.getElementById('period-badge').textContent = `${TIME_LABELS[tf]} · ${GROUP_LABELS[gb]}`;
+  if (tf === 'all') {
+    filteredByTime = [...allData];
+  } else {
+    const days   = tf === '7d' ? 7 : tf === '30d' ? 30 : tf === '90d' ? 90 : 365;
+    const cutoff = Date.now() - days * 86400000;
+    filteredByTime = allData.filter(item => {
+      const d = parseTs(item.timestamp);
+      return d && d.getTime() >= cutoff;
+    });
+  }
+  document.getElementById('time-filter-count').textContent =
+    `${filteredByTime.length} of ${allData.length} samples in range`;
+  drawAggChart(filteredByTime);
+  drawTrend();
+  renderTable();
+}
 
-      const baseY = height - pad - ((0 - min) / range) * (height - pad * 2);
-      const area = `${pad},${height - pad} ${points} ${width - pad},${height - pad}`;
+// ─────────────────────────────────────────
+//  READINGS TABLE
+// ─────────────────────────────────────────
+function renderTable() {
+  const sv = document.getElementById('search-input').value.trim().toLowerCase();
+  const sf = document.getElementById('status-filter').value;
+  const pf = document.getElementById('power-filter').value;
+  const data = filteredByTime.length ? filteredByTime : allData;
+  let vis = 0;
+  const rows = data.map((d, i) => {
+    const dt  = parseTs(d.timestamp);
+    const rp  = Number(d.active_power_w || 0);
+    const ri  = Number(d.total_import_kwh || 0);
+    const re  = Number(d.total_export_kwh || 0);
+    const sk  = i === 0 ? 'live' : 'history';
+    const ts  = fmtShort(dt);
+    const blob= `${sk} ${ts} ${rp.toFixed(1)} ${ri.toFixed(3)} ${re.toFixed(3)}`.toLowerCase();
+    let show = true;
+    if (sv && !blob.includes(sv))             show = false;
+    if (sf && sk !== sf)                      show = false;
+    if (pf === 'drawing'   && !(rp > 5))      show = false;
+    if (pf === 'exporting' && !(rp < -5))     show = false;
+    if (pf === 'idle'      && !(rp >= -5 && rp <= 5)) show = false;
+    if (!show) return '';
+    vis++;
+    return `<tr ${sv ? 'class="search-match"' : ''}>
+      <td><span class="badge ${sk}">${i === 0 ? 'Live' : 'History'}</span></td>
+      <td>${ts}</td>
+      <td><strong>${rp.toFixed(1)} W</strong></td>
+      <td>${ri.toFixed(3)} kWh</td>
+      <td>${re.toFixed(3)} kWh</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('history-body').innerHTML =
+    rows || '<tr><td colspan="5" class="no-data-msg">No readings match the current time range or filters.</td></tr>';
+  document.getElementById('filter-count').textContent = `${vis} of ${data.length} rows`;
+}
 
-      svg.innerHTML = `
-        <line x1="${pad}" y1="${baseY}" x2="${width - pad}" y2="${baseY}" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4 4"></line>
-        <polyline points="${area}" fill="rgba(245,158,11,0.10)" stroke="none"></polyline>
-        <polyline points="${points}" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      `;
+function clearFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('status-filter').value = '';
+  document.getElementById('power-filter').value = '';
+  renderTable();
+}
 
-      return { min, max, range };
-    }
+// ─────────────────────────────────────────
+//  RENDER STATES
+// ─────────────────────────────────────────
+function renderEmptyState() {
+  setDbStatus('frontend-only');
+  document.getElementById('api-status').textContent  = 'API reachable';
+  document.getElementById('api-dot').className       = 'dot ok';
+  document.getElementById('meter-status').textContent= 'No meter samples yet';
+  document.getElementById('meter-dot').className     = 'dot warn';
+  document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
+  document.getElementById('main-power').innerHTML    = '--<span class="unit">W</span>';
+  document.getElementById('main-state').textContent  = 'Waiting for the first smart meter sample.';
+  document.getElementById('main-explainer').textContent = 'The dashboard is running, but it has not received usable live meter data yet.';
+  document.getElementById('main-timestamp').textContent = 'Last meter sample: --';
+  document.getElementById('import-total').innerHTML  = '--<small>kWh</small>';
+  document.getElementById('export-total').innerHTML  = '--<small>kWh</small>';
+  document.getElementById('freshness-value').textContent = 'Waiting...';
+  document.getElementById('household-state').textContent = 'Unknown';
+  document.getElementById('samples-count').textContent   = '0 samples loaded';
+  document.getElementById('connection-note').textContent = 'Meter not connected yet';
+  document.getElementById('history-body').innerHTML  = '<tr><td colspan="5" class="muted-block">No meter readings yet. Connect the smart meter to begin.</td></tr>';
+  document.getElementById('agg-insight').textContent = 'Select a time range to see average use per period.';
+}
 
-    function getTrendInsight(values) {
-      if (!values.length) return 'Waiting for enough meter readings to describe recent energy behavior.';
+function renderErrorState() {
+  setDbStatus('frontend-only');
+  document.getElementById('api-status').textContent   = 'API not reachable';
+  document.getElementById('api-dot').className        = 'dot off';
+  document.getElementById('meter-status').textContent = 'Meter status unknown';
+  document.getElementById('meter-dot').className      = 'dot off';
+  document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
+  document.getElementById('connection-note').textContent = 'Connection interrupted';
+  document.getElementById('history-body').innerHTML   = '<tr><td colspan="5" class="muted-block" style="color:#fecaca;">Connection interrupted. Cannot reach /api/data right now.</td></tr>';
+}
 
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const spread = Math.abs(max - min);
-      const latest = values[values.length - 1];
+function renderDashboard(data) {
+  allData = data;
+  setDbStatus('connected');
+  const latest     = data[0];
+  const power      = Number(latest.active_power_w    || 0);
+  const importKwh  = Number(latest.total_import_kwh  || 0);
+  const exportKwh  = Number(latest.total_export_kwh  || 0);
+  const ld         = parseTs(latest.timestamp);
+  const fr         = freshness(ld);
 
-      if (spread < 1) {
-        return 'Recent readings are almost flat, which usually means the household load is currently very stable or no fresh live data is arriving yet.';
-      }
+  document.getElementById('api-status').textContent   = 'API reachable';
+  document.getElementById('api-dot').className        = 'dot ok';
+  document.getElementById('meter-status').textContent = fr.level === 'ok' ? 'Meter sending fresh data' : 'Meter data is stale';
+  document.getElementById('meter-dot').className      = `dot ${fr.level}`;
+  document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
+  document.getElementById('main-power').innerHTML     = `${power.toFixed(1)}<span class="unit">W</span>`;
+  document.getElementById('main-state').textContent   = householdState(power);
+  document.getElementById('main-explainer').textContent = fr.level === 'ok'
+    ? 'This is the latest live power reading from the smart meter.'
+    : 'The dashboard has data, but the most recent meter sample is not fresh.';
+  document.getElementById('main-timestamp').textContent = `Last meter sample: ${fmtLong(ld)}`;
+  document.getElementById('import-total').innerHTML   = `${importKwh.toFixed(3)}<small>kWh</small>`;
+  document.getElementById('export-total').innerHTML   = `${exportKwh.toFixed(3)}<small>kWh</small>`;
+  document.getElementById('freshness-value').textContent = fr.text;
+  document.getElementById('household-state').textContent = householdState(power);
+  document.getElementById('samples-count').textContent   = `${data.length} samples loaded`;
+  document.getElementById('connection-note').textContent = fr.level === 'ok' ? 'Live meter data visible' : 'Dashboard online, meter data stale';
+  applyTimeFilter();
+}
 
-      if (latest > 5) {
-        return 'The latest reading suggests the home is currently drawing power from the grid.';
-      }
+// ─────────────────────────────────────────
+//  FETCH + POLL
+// ─────────────────────────────────────────
+async function update() {
+  try {
+    const res  = await fetch('/api/data');
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) { renderEmptyState(); return; }
+    renderDashboard(data);
+  } catch (err) {
+    console.error('Fetch error:', err);
+    renderErrorState();
+  }
+}
 
-      if (latest < -5) {
-        return 'The latest reading suggests the home is currently exporting power back out.';
-      }
-
-      return 'The recent readings show only small movement around idle power levels.';
-    }
-
-    function renderEmptyState() {
-      document.getElementById('api-status').textContent = 'API reachable';
-      document.getElementById('api-dot').className = 'dot ok';
-      document.getElementById('meter-status').textContent = 'No meter samples yet';
-      document.getElementById('meter-dot').className = 'dot warn';
-      document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
-
-      document.getElementById('main-power').innerHTML = `--<span class="unit">W</span>`;
-      document.getElementById('main-state').textContent = 'Waiting for the first smart meter sample.';
-      document.getElementById('main-explainer').textContent = 'The dashboard is running, but it has not received usable live meter data yet.';
-      document.getElementById('main-timestamp').textContent = 'Last meter sample: --';
-
-      document.getElementById('import-total').innerHTML = `--<small>kWh</small>`;
-      document.getElementById('export-total').innerHTML = `--<small>kWh</small>`;
-      document.getElementById('freshness-value').textContent = 'Waiting...';
-      document.getElementById('household-state').textContent = 'Unknown';
-
-      document.getElementById('samples-count').textContent = '0 samples loaded';
-      document.getElementById('connection-note').textContent = 'Meter not connected yet';
-
-      document.getElementById('trend-min').textContent = 'Min: --';
-      document.getElementById('trend-max').textContent = 'Max: --';
-      document.getElementById('trend-range').textContent = 'Range: --';
-      document.getElementById('trend-insight').textContent = 'Waiting for enough meter readings to describe recent energy behavior.';
-      document.getElementById('trend-chart').innerHTML = '';
-
-      document.getElementById('history-body').innerHTML = `
-        <tr>
-          <td colspan="5" class="muted-block">No meter readings yet. Connect the smart meter to begin showing household energy data.</td>
-        </tr>
-      `;
-    }
-
-    function renderErrorState() {
-      document.getElementById('api-status').textContent = 'API not reachable';
-      document.getElementById('api-dot').className = 'dot off';
-      document.getElementById('meter-status').textContent = 'Meter status unknown';
-      document.getElementById('meter-dot').className = 'dot off';
-      document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
-      document.getElementById('connection-note').textContent = 'Connection interrupted';
-
-      document.getElementById('history-body').innerHTML = `
-        <tr>
-          <td colspan="5" class="muted-block" style="color:#fecaca;">Connection interrupted. The dashboard cannot reach /api/data right now.</td>
-        </tr>
-      `;
-    }
-
-    function renderDashboard(data) {
-      const latest = data[0];
-      const power = Number(latest.active_power_w || 0);
-      const importKwh = Number(latest.total_import_kwh || 0);
-      const exportKwh = Number(latest.total_export_kwh || 0);
-      const latestDate = formatTime(latest.timestamp);
-      const freshness = getFreshnessText(latestDate);
-      const values = data.slice(0, 12).reverse().map(d => Number(d.active_power_w || 0));
-      const stats = drawTrend(data.slice(0, 12).reverse());
-
-      document.getElementById('api-status').textContent = 'API reachable';
-      document.getElementById('api-dot').className = 'dot ok';
-      document.getElementById('meter-status').textContent = freshness.level === 'ok' ? 'Meter sending fresh data' : 'Meter data is stale';
-      document.getElementById('meter-dot').className = `dot ${freshness.level}`;
-      document.getElementById('last-ui-update').textContent = `Screen updated: ${new Date().toLocaleTimeString()}`;
-
-      document.getElementById('main-power').innerHTML = `${power.toFixed(1)}<span class="unit">W</span>`;
-      document.getElementById('main-state').textContent = getHouseholdState(power);
-      document.getElementById('main-explainer').textContent =
-        freshness.level === 'ok'
-          ? 'This is the latest live power reading from the smart meter.'
-          : 'The dashboard has data, but the most recent meter sample is not fresh.';
-      document.getElementById('main-timestamp').textContent = `Last meter sample: ${formatTimeLabel(latestDate)}`;
-
-      document.getElementById('import-total').innerHTML = `${importKwh.toFixed(3)}<small>kWh</small>`;
-      document.getElementById('export-total').innerHTML = `${exportKwh.toFixed(3)}<small>kWh</small>`;
-      document.getElementById('freshness-value').textContent = freshness.text;
-      document.getElementById('household-state').textContent = getHouseholdState(power);
-
-      document.getElementById('samples-count').textContent = `${data.length} samples loaded`;
-      document.getElementById('connection-note').textContent =
-        freshness.level === 'ok' ? 'Live meter data visible' : 'Dashboard online, meter data stale';
-
-      document.getElementById('trend-min').textContent = `Min: ${stats.min.toFixed(1)} W`;
-      document.getElementById('trend-max').textContent = `Max: ${stats.max.toFixed(1)} W`;
-      document.getElementById('trend-range').textContent = `Range: ${stats.range.toFixed(1)} W`;
-      document.getElementById('trend-insight').textContent = getTrendInsight(values);
-
-      document.getElementById('history-body').innerHTML = data.slice(0, 10).map((d, index) => {
-        const rowDate = formatTime(d.timestamp);
-        const rowPower = Number(d.active_power_w || 0);
-        const rowImport = Number(d.total_import_kwh || 0);
-        const rowExport = Number(d.total_export_kwh || 0);
-
-        return `
-          <tr>
-            <td><span class="badge ${index === 0 ? 'live' : 'history'}">${index === 0 ? 'Live' : 'History'}</span></td>
-            <td>${formatShort(rowDate)}</td>
-            <td><strong>${rowPower.toFixed(1)} W</strong></td>
-            <td>${rowImport.toFixed(3)} kWh</td>
-            <td>${rowExport.toFixed(3)} kWh</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    async function update() {
-      try {
-        const res = await fetch('/api/data');
-        const data = await res.json();
-
-        if (!Array.isArray(data) || data.length === 0) {
-          renderEmptyState();
-          return;
-        }
-
-        renderDashboard(data);
-      } catch (err) {
-        console.error('Fetch error:', err);
-        renderErrorState();
-      }
-    }
-
-    renderEmptyState();
-    update();
-    setInterval(update, REFRESH_MS);
-  </script>
+setDbStatus('checking');
+renderEmptyState();
+update();
+setInterval(update, REFRESH_MS);
+</script>
 </body>
 </html>
