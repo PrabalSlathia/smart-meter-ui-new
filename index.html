@@ -553,7 +553,7 @@ function clearFilters() {
 // ─────────────────────────────────────────
 function renderEmptyState() {
   setDbStatus('frontend-only');
-  document.getElementById('api-status').textContent  = 'API reachable';
+  document.getElementById('api-status').textContent  = 'API reachable — no data yet';
   document.getElementById('api-dot').className       = 'dot ok';
   document.getElementById('meter-status').textContent= 'No meter samples yet';
   document.getElementById('meter-dot').className     = 'dot warn';
@@ -619,8 +619,11 @@ function renderDashboard(data) {
 async function update() {
   try {
     const res  = await fetch('/api/data');
+    if (!res.ok) { renderErrorState(); return; }
     const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) { renderEmptyState(); return; }
+    if (!Array.isArray(data)) { renderErrorState(); return; }
+    // Allow empty array — meter connected but no readings yet
+    if (data.length === 0) { renderEmptyState(); return; }
     renderDashboard(data);
   } catch (err) {
     console.error('Fetch error:', err);
