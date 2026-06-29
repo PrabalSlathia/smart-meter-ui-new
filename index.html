@@ -159,8 +159,8 @@
     <div class="summary-grid">
       <div class="summary-card"><div class="k">Avg power per period</div><div class="v" id="sum-avg-power">--<small>W</small></div></div>
       <div class="summary-card"><div class="k">Peak power recorded</div><div class="v" id="sum-peak-power">--<small>W</small></div></div>
-      <div class="summary-card"><div class="k">Avg daily import</div><div class="v" id="sum-avg-import">--<small>kWh</small></div></div>
-      <div class="summary-card"><div class="k">Avg daily export</div><div class="v" id="sum-avg-export">--<small>kWh</small></div></div>
+      <div class="summary-card"><div class="k">Avg import per period</div><div class="v" id="sum-avg-import">--<small>kWh</small></div></div>
+      <div class="summary-card"><div class="k">Avg export per period</div><div class="v" id="sum-avg-export">--<small>kWh</small></div></div>
     </div>
 
     <div class="trend-wrap">
@@ -248,6 +248,7 @@ const REFRESH_MS = 10000;
 let allData = [];
 let filteredByTime = [];
 let trendRange = 20;
+let timeFilterActive = false;
 
 function parseTs(ts) {
   if (ts && ts._seconds) return new Date(ts._seconds * 1000);
@@ -368,8 +369,152 @@ function setTrendRange(n, btn) {
   drawTrend();
 }
 
+function getWeekNum(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const y1 = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - y1) / 86400000) + 1) / 7);
+}
+
+function bucketKey(dt, mode) {
+  if (mode === 'month') return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+  if (mode === 'week') return `${dt.getFullYear()}-W${String(getWeekNum(dt)).padStart(2,'0')}`;
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+function getPeriodLabel(key) {
+  if (/^\d{4}-W\d{2}$/.test(key)) return key.replace('-', ' ');
+  if (/^\d{4}-\d{2}$/.test(key)) {
+    const [y, m] = key.split('-');
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleString([], { month:'long', year:'numeric' });
+  }
+  const d = new Date(key);
+  return Number.isNaN(d.getTime()) ? key : d.toLocaleString([], { day:'numeric', month:'short', year:'numeric' });
+}
+
+function getActiveData() {
+  return timeFilterActive ? filteredByTime : allData;
+}
+
+function buildAggregated(data) {
+  const mode = document.getElementById('group-by').value;
+  const map = new Map();
+
+  data.forEach(item => {
+    const dt = parseTs(item.timestamp);
+    if (!dt || Number.isNaN(dt.getTime())) return;
+
+    const power = Number(item.power ?? 0);
+    const importKwh = Number(item.importKwh ?? 0);
+    const exportKwh = Number(item.exportKwh ?? 0);
+    const key = bucketKey(dt, mode);
+
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        dt,
+        count: 0,
+        powerSum: 0,
+        peakPower: -Infinity,
+        firstImport: importKwh,
+        lastImport: importKwh,
+        firstExport: exportKwh,
+        lastExport: exportKwh
+      });
+    }
+
+    const bucket = map.get(key);
+    if (dt < bucket.dt) bucket.dt = dt;
+    bucket.count += 1;
+    bucket.powerSum += power;
+    bucket.peakPower = Math.max(bucket.peakPower, power);
+    bucket.firstImport = Math.min(bucket.firstImport, importKwh);
+    bucket.lastImport = Math.max(bucket.lastImport, importKwh);
+    bucket.firstExport = Math.min(bucket.firstExport, exportKwh);
+    bucket.lastExport = Math.max(bucket.lastExport, exportKwh);
+  });
+
+  return [...map.values()]
+    .sort((a, b) => a.dt - b.dt)
+    .map(b => ({
+      label: getPeriodLabel(b.key),
+      avgPower: b.count ? b.powerSum / b.count : 0,
+      peakPower: Number.isFinite(b.peakPower) ? b.peakPower : 0,
+      importUsed: Math.max(0, b.lastImport - b.firstImport),
+      exportUsed: Math.max(0, b.lastExport - b.firstExport)
+    }));
+}
+
+function drawAggChart(data) {
+  const agg = buildAggregated(data);
+
+  if (!agg.length) {
+    document.getElementById('agg-chart').innerHTML = '';
+    document.getElementById('agg-insight').textContent = 'No data available for this time range yet — try "All data" or wait for more readings to be collected.';
+    document.getElementById('agg-periods').textContent = 'Periods: --';
+    document.getElementById('agg-min').textContent = 'Lowest avg: --';
+    document.getElementById('agg-max').textContent = 'Highest avg: --';
+    document.getElementById('agg-latest').textContent = 'Latest bucket: --';
+    document.getElementById('sum-avg-power').innerHTML = '--<small>W</small>';
+    document.getElementById('sum-peak-power').innerHTML = '--<small>W</small>';
+    document.getElementById('sum-avg-import').innerHTML = '--<small>kWh</small>';
+    document.getElementById('sum-avg-export').innerHTML = '--<small>kWh</small>';
+    return;
+  }
+
+  const avgVals = agg.map(x => x.avgPower);
+  const peakVals = agg.map(x => x.peakPower);
+
+  drawLine('agg-chart', 'agg-scroll-inner', avgVals, '#38bdf8', 0.08);
+
+  const svg = document.getElementById('agg-chart');
+  const viewBox = svg.getAttribute('viewBox').split(' ');
+  const W = Number(viewBox[2]);
+  const CH = 160;
+  const pad = 18;
+
+  const mn = Math.min(...avgVals, 0);
+  const mx = Math.max(...peakVals, ...avgVals, 0);
+  const rng = Math.max(mx - mn, 1);
+
+  const xOf = i => pad + (i * (W - pad * 2)) / Math.max(agg.length - 1, 1);
+  const yOf = v => CH - pad - ((v - mn) / rng) * (CH - pad * 2);
+
+  const peakDots = peakVals.map((v, i) =>
+    `<circle cx="${xOf(i)}" cy="${yOf(v)}" r="4" fill="#f59e0b" opacity=".45"/>`
+  ).join('');
+
+  svg.innerHTML += peakDots;
+
+  const overallAvg = avgVals.reduce((a, b) => a + b, 0) / Math.max(avgVals.length, 1);
+  const overallPeak = Math.max(...peakVals, 0);
+  const overallImport = agg.reduce((a, b) => a + b.importUsed, 0) / Math.max(agg.length, 1);
+  const overallExport = agg.reduce((a, b) => a + b.exportUsed, 0) / Math.max(agg.length, 1);
+
+  document.getElementById('sum-avg-power').innerHTML = `${overallAvg.toFixed(1)}<small>W</small>`;
+  document.getElementById('sum-peak-power').innerHTML = `${overallPeak.toFixed(1)}<small>W</small>`;
+  document.getElementById('sum-avg-import').innerHTML = `${overallImport.toFixed(3)}<small>kWh</small>`;
+  document.getElementById('sum-avg-export').innerHTML = `${overallExport.toFixed(3)}<small>kWh</small>`;
+
+  document.getElementById('agg-periods').textContent = `Periods: ${agg.length}`;
+  document.getElementById('agg-min').textContent = `Lowest avg: ${Math.min(...avgVals).toFixed(1)} W`;
+  document.getElementById('agg-max').textContent = `Highest avg: ${Math.max(...avgVals).toFixed(1)} W`;
+  document.getElementById('agg-latest').textContent = `Latest: ${agg[agg.length - 1].label}`;
+
+  const mode = document.getElementById('group-by').value;
+  const highest = agg.reduce((a, b) => b.avgPower > a.avgPower ? b : a);
+  const lowest = agg.reduce((a, b) => b.avgPower < a.avgPower ? b : a);
+
+  document.getElementById('agg-insight').textContent =
+    `This chart shows average household power grouped by ${mode}. ` +
+    `The highest-use ${mode} in this range was ${highest.label} (${highest.avgPower.toFixed(1)} W avg). ` +
+    `The lowest-use ${mode} was ${lowest.label} (${lowest.avgPower.toFixed(1)} W avg). ` +
+    `Blue line = average power per ${mode}. Orange dots = peak reading in that ${mode}.`;
+}
+
 function drawTrend() {
-  const data = filteredByTime.length ? filteredByTime : allData;
+  const data = getActiveData();
   const slice = trendRange === 0 ? [...data].reverse() : [...data].slice(0, trendRange).reverse();
   const vals = slice.map(d => Number(d.power || 0));
 
@@ -402,123 +547,6 @@ function drawTrend() {
     : 'Recent readings show small movement around idle power levels.';
 }
 
-function getWeekNum(d) {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - day);
-  const y1 = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil((((date - y1) / 86400000) + 1) / 7);
-}
-
-function bucketKey(dt, mode) {
-  if (mode === 'month') return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-  if (mode === 'week') return `${dt.getFullYear()}-W${String(getWeekNum(dt)).padStart(2,'0')}`;
-  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-}
-
-function getPeriodLabel(key) {
-  if (/^\d{4}-W\d{2}$/.test(key)) return key.replace('-', ' ');
-  if (/^\d{4}-\d{2}$/.test(key)) {
-    const [y, m] = key.split('-');
-    return new Date(Number(y), Number(m) - 1, 1).toLocaleString([], { month:'long', year:'numeric' });
-  }
-  const d = new Date(key);
-  return Number.isNaN(d.getTime()) ? key : d.toLocaleString([], { day:'numeric', month:'short', year:'numeric' });
-}
-
-function buildAggregated(data) {
-  const mode = document.getElementById('group-by').value;
-  const map = {};
-
-  data.forEach(item => {
-    const dt = parseTs(item.timestamp);
-    if (!dt || Number.isNaN(dt.getTime())) return;
-
-    const k = bucketKey(dt, mode);
-    if (!map[k]) map[k] = { key:k, dt, power:[], import:[], export:[] };
-
-    map[k].power.push(Number(item.power || 0));
-    map[k].import.push(Number(item.importKwh || 0));
-    map[k].export.push(Number(item.exportKwh || 0));
-  });
-
-  return Object.values(map)
-    .sort((a, b) => a.dt - b.dt)
-    .map(b => ({
-      label: getPeriodLabel(b.key),
-      avgPower: b.power.reduce((x, y) => x + y, 0) / Math.max(b.power.length, 1),
-      peakPower: Math.max(...b.power, 0),
-      avgImport: b.import.reduce((x, y) => x + y, 0) / Math.max(b.import.length, 1),
-      avgExport: b.export.reduce((x, y) => x + y, 0) / Math.max(b.export.length, 1)
-    }));
-}
-
-function drawAggChart(data) {
-  const agg = buildAggregated(data);
-
-  if (!agg.length) {
-    document.getElementById('agg-chart').innerHTML = '';
-    document.getElementById('agg-insight').textContent = 'No data available for this time range yet — try "All data" or wait for more readings to be collected.';
-    document.getElementById('agg-periods').textContent = 'Periods: --';
-    document.getElementById('agg-min').textContent = 'Lowest avg: --';
-    document.getElementById('agg-max').textContent = 'Highest avg: --';
-    document.getElementById('agg-latest').textContent = 'Latest bucket: --';
-    document.getElementById('sum-avg-power').innerHTML = '--<small>W</small>';
-    document.getElementById('sum-peak-power').innerHTML = '--<small>W</small>';
-    document.getElementById('sum-avg-import').innerHTML = '--<small>kWh</small>';
-    document.getElementById('sum-avg-export').innerHTML = '--<small>kWh</small>';
-    return;
-  }
-
-  const avgVals = agg.map(x => x.avgPower);
-  const peakVals = agg.map(x => x.peakPower);
-  drawLine('agg-chart', 'agg-scroll-inner', avgVals, '#38bdf8', 0.08);
-
-  const svg = document.getElementById('agg-chart');
-  const viewBox = svg.getAttribute('viewBox').split(' ');
-  const W = Number(viewBox[2]);
-  const CH = 160;
-  const pad = 18;
-
-  const mn = Math.min(...avgVals, 0);
-  const mx = Math.max(...peakVals, ...avgVals, 0);
-  const rng = Math.max(mx - mn, 1);
-
-  const xOf = i => pad + (i * (W - pad * 2)) / Math.max(agg.length - 1, 1);
-  const yOf = v => CH - pad - ((v - mn) / rng) * (CH - pad * 2);
-
-  const peakDots = peakVals.map((v, i) =>
-    `<circle cx="${xOf(i)}" cy="${yOf(v)}" r="4" fill="#f59e0b" opacity=".45"/>`
-  ).join('');
-
-  svg.innerHTML += peakDots;
-
-  const overallAvg = avgVals.reduce((a, b) => a + b, 0) / Math.max(avgVals.length, 1);
-  const overallPeak = Math.max(...peakVals, 0);
-  const overallImport = agg.reduce((a, b) => a + b.avgImport, 0) / Math.max(agg.length, 1);
-  const overallExport = agg.reduce((a, b) => a + b.avgExport, 0) / Math.max(agg.length, 1);
-
-  document.getElementById('sum-avg-power').innerHTML = `${overallAvg.toFixed(1)}<small>W</small>`;
-  document.getElementById('sum-peak-power').innerHTML = `${overallPeak.toFixed(1)}<small>W</small>`;
-  document.getElementById('sum-avg-import').innerHTML = `${overallImport.toFixed(3)}<small>kWh</small>`;
-  document.getElementById('sum-avg-export').innerHTML = `${overallExport.toFixed(3)}<small>kWh</small>`;
-
-  document.getElementById('agg-periods').textContent = `Periods: ${agg.length}`;
-  document.getElementById('agg-min').textContent = `Lowest avg: ${Math.min(...avgVals).toFixed(1)} W`;
-  document.getElementById('agg-max').textContent = `Highest avg: ${Math.max(...avgVals).toFixed(1)} W`;
-  document.getElementById('agg-latest').textContent = `Latest: ${agg[agg.length - 1].label}`;
-
-  const mode = document.getElementById('group-by').value;
-  const highest = agg.reduce((a, b) => b.avgPower > a.avgPower ? b : a);
-  const lowest = agg.reduce((a, b) => b.avgPower < a.avgPower ? b : a);
-
-  document.getElementById('agg-insight').textContent =
-    `This chart shows average household power grouped by ${mode}. ` +
-    `The highest-use ${mode} in this range was ${highest.label} (${highest.avgPower.toFixed(1)} W avg). ` +
-    `The lowest-use ${mode} was ${lowest.label} (${lowest.avgPower.toFixed(1)} W avg). ` +
-    `Blue line = average power per ${mode}. Orange dots = peak reading in that ${mode}.`;
-}
-
 const TIME_LABELS = { '7d':'Last 7 days', '30d':'Last 30 days', '90d':'Last 90 days', '365d':'Last 12 months', 'all':'All data' };
 const GROUP_LABELS = { 'day':'by day', 'week':'by week', 'month':'by month' };
 
@@ -527,6 +555,7 @@ function applyTimeFilter() {
   const gb = document.getElementById('group-by').value;
 
   document.getElementById('period-badge').textContent = `${TIME_LABELS[tf]} · ${GROUP_LABELS[gb]}`;
+  timeFilterActive = true;
 
   if (tf === 'all') {
     filteredByTime = [...allData];
@@ -550,7 +579,7 @@ function renderTable() {
   const sv = document.getElementById('search-input').value.trim().toLowerCase();
   const sf = document.getElementById('status-filter').value;
   const pf = document.getElementById('power-filter').value;
-  const data = filteredByTime.length ? filteredByTime : allData;
+  const data = getActiveData();
 
   let vis = 0;
 
@@ -573,19 +602,25 @@ function renderTable() {
     if (!show) return '';
 
     vis++;
-    return `<tr ${sv ? 'class="search-match"' : ''}>
-      <td><span class="badge ${sk}">${i === 0 ? 'Live' : 'History'}</span></td>
-      <td>${ts}</td>
-      <td><strong>${rp.toFixed(1)} W</strong></td>
-      <td>${ri.toFixed(3)} kWh</td>
-      <td>${re.toFixed(3)} kWh</td>
-    </tr>`;
+    const badge = sk === 'live'
+      ? '<span class="badge live">Live</span>'
+      : '<span class="badge history">History</span>';
+
+    return `
+      <tr class="${sv && blob.includes(sv) ? 'search-match' : ''}">
+        <td>${badge}</td>
+        <td>${ts}</td>
+        <td>${rp.toFixed(1)} W</td>
+        <td>${ri.toFixed(3)} kWh</td>
+        <td>${re.toFixed(3)} kWh</td>
+      </tr>
+    `;
   }).join('');
 
   document.getElementById('history-body').innerHTML =
-    rows || '<tr><td colspan="5" class="no-data-msg">No readings match the current time range or filters.</td></tr>';
+    rows || '<tr><td colspan="5" class="no-data-msg">No readings match the current filters.</td></tr>';
 
-  document.getElementById('filter-count').textContent = `${vis} of ${data.length} rows`;
+  document.getElementById('filter-count').textContent = `${vis} visible rows`;
 }
 
 function clearFilters() {
@@ -598,6 +633,7 @@ function clearFilters() {
 function renderEmptyState() {
   allData = [];
   filteredByTime = [];
+  timeFilterActive = false;
   setDbStatus('frontend-only');
 
   document.getElementById('api-status').textContent = 'API reachable — no data yet';
@@ -619,7 +655,7 @@ function renderEmptyState() {
   document.getElementById('connection-note').textContent = 'Meter not connected yet';
 
   document.getElementById('time-filter-count').textContent = '0 of 0 samples in range';
-  document.getElementById('filter-count').textContent = '0 of 0 rows';
+  document.getElementById('filter-count').textContent = '0 visible rows';
 
   document.getElementById('trend-chart').innerHTML = '';
   document.getElementById('trend-min').textContent = 'Min: --';
