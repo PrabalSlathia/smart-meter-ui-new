@@ -371,7 +371,7 @@ function setTrendRange(n, btn) {
 function drawTrend() {
   const data = filteredByTime.length ? filteredByTime : allData;
   const slice = trendRange === 0 ? [...data].reverse() : [...data].slice(0, trendRange).reverse();
-  const vals = slice.map(d => Number(d.active_power_w || 0));
+  const vals = slice.map(d => Number(d.power || 0));
 
   if (!vals.length) {
     document.getElementById('trend-chart').innerHTML = '';
@@ -437,9 +437,9 @@ function buildAggregated(data) {
     const k = bucketKey(dt, mode);
     if (!map[k]) map[k] = { key:k, dt, power:[], import:[], export:[] };
 
-    map[k].power.push(Number(item.active_power_w || 0));
-    map[k].import.push(Number(item.total_import_kwh || 0));
-    map[k].export.push(Number(item.total_export_kwh || 0));
+    map[k].power.push(Number(item.power || 0));
+    map[k].import.push(Number(item.importKwh || 0));
+    map[k].export.push(Number(item.exportKwh || 0));
   });
 
   return Object.values(map)
@@ -556,9 +556,9 @@ function renderTable() {
 
   const rows = data.map((d, i) => {
     const dt = parseTs(d.timestamp);
-    const rp = Number(d.active_power_w || 0);
-    const ri = Number(d.total_import_kwh || 0);
-    const re = Number(d.total_export_kwh || 0);
+    const rp = Number(d.power || 0);
+    const ri = Number(d.importKwh || 0);
+    const re = Number(d.exportKwh || 0);
     const sk = i === 0 ? 'live' : 'history';
     const ts = fmtShort(dt);
     const blob = `${sk} ${ts} ${rp.toFixed(1)} ${ri.toFixed(3)} ${re.toFixed(3)}`.toLowerCase();
@@ -659,9 +659,9 @@ function renderDashboard(data) {
   setDbStatus('connected');
 
   const latest = data[0];
-  const power = Number(latest.active_power_w || 0);
-  const importKwh = Number(latest.total_import_kwh || 0);
-  const exportKwh = Number(latest.total_export_kwh || 0);
+  const power = Number(latest.power || 0);
+  const importKwh = Number(latest.importKwh || 0);
+  const exportKwh = Number(latest.exportKwh || 0);
   const ld = parseTs(latest.timestamp);
   const fr = freshness(ld);
 
