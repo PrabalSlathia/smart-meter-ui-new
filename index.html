@@ -248,7 +248,6 @@ const REFRESH_MS = 10000;
 let allData = [];
 let filteredByTime = [];
 let trendRange = 20;
-let timeFilterActive = false;
 
 function parseTs(ts) {
   if (ts && ts._seconds) return new Date(ts._seconds * 1000);
@@ -379,7 +378,11 @@ function getWeekNum(d) {
 
 function bucketKey(dt, mode) {
   if (mode === 'month') return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-  if (mode === 'week') return `${dt.getFullYear()}-W${String(getWeekNum(dt)).padStart(2,'0')}`;
+  if (mode === 'week') {
+    const weekYear = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+    weekYear.setUTCDate(weekYear.getUTCDate() + 4 - (weekYear.getUTCDay() || 7));
+    return `${weekYear.getUTCFullYear()}-W${String(getWeekNum(dt)).padStart(2,'0')}`;
+  }
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 }
 
@@ -393,15 +396,32 @@ function getPeriodLabel(key) {
   return Number.isNaN(d.getTime()) ? key : d.toLocaleString([], { day:'numeric', month:'short', year:'numeric' });
 }
 
-function getActiveData() {
-  return timeFilterActive ? filteredByTime : allData;
+function getFilteredData() {
+  return filteredByTime;
+}
+
+function sortDataNewestFirst(data) {
+  return [...data].sort((a, b) => {
+    const ta = parseTs(a.timestamp)?.getTime() ?? 0;
+    const tb = parseTs(b.timestamp)?.getTime() ?? 0;
+    return tb - ta;
+  });
+}
+
+function sortDataOldestFirst(data) {
+  return [...data].sort((a, b) => {
+    const ta = parseTs(a.timestamp)?.getTime() ?? 0;
+    const tb = parseTs(b.timestamp)?.getTime() ?? 0;
+    return ta - tb;
+  });
 }
 
 function buildAggregated(data) {
   const mode = document.getElementById('group-by').value;
+  const sorted = sortDataOldestFirst(data);
   const map = new Map();
 
-  data.forEach(item => {
+  sorted.forEach(item => {
     const dt = parseTs(item.timestamp);
     if (!dt || Number.isNaN(dt.getTime())) return;
 
@@ -413,7 +433,8 @@ function buildAggregated(data) {
     if (!map.has(key)) {
       map.set(key, {
         key,
-        dt,
+        firstDt: dt,
+        lastDt: dt,
         count: 0,
         powerSum: 0,
         peakPower: -Infinity,
@@ -425,18 +446,26 @@ function buildAggregated(data) {
     }
 
     const bucket = map.get(key);
-    if (dt < bucket.dt) bucket.dt = dt;
+
+    if (dt < bucket.firstDt) {
+      bucket.firstDt = dt;
+      bucket.firstImport = importKwh;
+      bucket.firstExport = exportKwh;
+    }
+
+    if (dt > bucket.lastDt) {
+      bucket.lastDt = dt;
+      bucket.lastImport = importKwh;
+      bucket.lastExport = exportKwh;
+    }
+
     bucket.count += 1;
     bucket.powerSum += power;
     bucket.peakPower = Math.max(bucket.peakPower, power);
-    bucket.firstImport = Math.min(bucket.firstImport, importKwh);
-    bucket.lastImport = Math.max(bucket.lastImport, importKwh);
-    bucket.firstExport = Math.min(bucket.firstExport, exportKwh);
-    bucket.lastExport = Math.max(bucket.lastExport, exportKwh);
   });
 
   return [...map.values()]
-    .sort((a, b) => a.dt - b.dt)
+    .sort((a, b) => a.firstDt - b.firstDt)
     .map(b => ({
       label: getPeriodLabel(b.key),
       avgPower: b.count ? b.powerSum / b.count : 0,
@@ -514,8 +543,9 @@ function drawAggChart(data) {
 }
 
 function drawTrend() {
-  const data = getActiveData();
-  const slice = trendRange === 0 ? [...data].reverse() : [...data].slice(0, trendRange).reverse();
+  const data = getFilteredData();
+  const newestFirst = sortDataNewestFirst(data);
+  const slice = trendRange === 0 ? [...newestFirst].reverse() : newestFirst.slice(0, trendRange).reverse();
   const vals = slice.map(d => Number(d.power || 0));
 
   if (!vals.length) {
@@ -550,22 +580,34 @@ function drawTrend() {
 const TIME_LABELS = { '7d':'Last 7 days', '30d':'Last 30 days', '90d':'Last 90 days', '365d':'Last 12 months', 'all':'All data' };
 const GROUP_LABELS = { 'day':'by day', 'week':'by week', 'month':'by month' };
 
+function getLatestTimestampMs(data) {
+  const vals = data
+    .map(item => parseTs(item.timestamp))
+    .filter(d => d && !Number.isNaN(d.getTime()))
+    .map(d => d.getTime());
+
+  return vals.length ? Math.max(...vals) : null;
+}
+
 function applyTimeFilter() {
   const tf = document.getElementById('time-filter').value;
   const gb = document.getElementById('group-by').value;
 
   document.getElementById('period-badge').textContent = `${TIME_LABELS[tf]} · ${GROUP_LABELS[gb]}`;
-  timeFilterActive = true;
 
   if (tf === 'all') {
-    filteredByTime = [...allData];
+    filteredByTime = sortDataNewestFirst(allData);
   } else {
     const days = tf === '7d' ? 7 : tf === '30d' ? 30 : tf === '90d' ? 90 : 365;
-    const cutoff = Date.now() - days * 86400000;
-    filteredByTime = allData.filter(item => {
-      const d = parseTs(item.timestamp);
-      return d && !Number.isNaN(d.getTime()) && d.getTime() >= cutoff;
-    });
+    const latestTs = getLatestTimestampMs(allData);
+    const cutoff = latestTs == null ? null : latestTs - days * 86400000;
+
+    filteredByTime = sortDataNewestFirst(
+      allData.filter(item => {
+        const d = parseTs(item.timestamp);
+        return d && !Number.isNaN(d.getTime()) && cutoff != null && d.getTime() >= cutoff;
+      })
+    );
   }
 
   document.getElementById('time-filter-count').textContent = `${filteredByTime.length} of ${allData.length} samples in range`;
@@ -579,7 +621,7 @@ function renderTable() {
   const sv = document.getElementById('search-input').value.trim().toLowerCase();
   const sf = document.getElementById('status-filter').value;
   const pf = document.getElementById('power-filter').value;
-  const data = getActiveData();
+  const data = getFilteredData();
 
   let vis = 0;
 
@@ -633,9 +675,8 @@ function clearFilters() {
 function renderEmptyState() {
   allData = [];
   filteredByTime = [];
-  timeFilterActive = false;
-  setDbStatus('frontend-only');
 
+  setDbStatus('frontend-only');
   document.getElementById('api-status').textContent = 'API reachable — no data yet';
   document.getElementById('api-dot').className = 'dot ok';
   document.getElementById('meter-status').textContent = 'No meter samples yet';
@@ -691,10 +732,11 @@ function renderErrorState() {
 }
 
 function renderDashboard(data) {
-  allData = data;
+  allData = sortDataNewestFirst(data);
+
   setDbStatus('connected');
 
-  const latest = data[0];
+  const latest = allData[0];
   const power = Number(latest.power || 0);
   const importKwh = Number(latest.importKwh || 0);
   const exportKwh = Number(latest.exportKwh || 0);
@@ -719,7 +761,7 @@ function renderDashboard(data) {
   document.getElementById('export-total').innerHTML = `${exportKwh.toFixed(3)}<small>kWh</small>`;
   document.getElementById('freshness-value').textContent = fr.text;
   document.getElementById('household-state').textContent = householdState(power);
-  document.getElementById('samples-count').textContent = `${data.length} samples loaded`;
+  document.getElementById('samples-count').textContent = `${allData.length} samples loaded`;
   document.getElementById('connection-note').textContent =
     fr.level === 'ok' ? 'Live meter data visible' : 'Dashboard online, meter data stale';
 
