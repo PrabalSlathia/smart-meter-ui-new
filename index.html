@@ -68,7 +68,17 @@
     .summary-card .v{font-size:1.22rem;font-weight:800}
     .summary-card .v small{font-size:.55em;color:var(--muted);margin-left:4px;font-weight:600}
     .trend-wrap{background:var(--panel-2);border:1px solid var(--border);border-radius:16px;padding:12px;overflow-x:auto}
+    .chart-stage{position:relative}
     .chart-svg{height:230px;width:100%;display:block;min-width:600px}
+    .chart-hover-group{cursor:pointer}
+    .chart-marker-line{stroke:rgba(255,255,255,.16);stroke-width:1;shape-rendering:crispEdges;pointer-events:none;transition:stroke .16s,stroke-opacity .16s}
+    .chart-hover-group.is-active .chart-marker-line{stroke:rgba(245,158,11,.95);stroke-width:1.4}
+    .chart-hit{fill:transparent;cursor:pointer}
+    .chart-tooltip{position:absolute;z-index:4;display:none;min-width:184px;max-width:260px;padding:12px 13px;border-radius:14px;background:rgba(10,16,30,.97);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 40px rgba(0,0,0,.35);backdrop-filter:blur(10px);pointer-events:none}
+    .chart-tooltip-title{margin:0 0 8px;font-size:.76rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#fde68a}
+    .chart-tooltip-row{display:flex;justify-content:space-between;gap:12px;font-size:.9rem;line-height:1.35;margin-top:6px}
+    .chart-tooltip-row span{color:var(--muted)}
+    .chart-tooltip-row strong{color:var(--text);font-weight:700;text-align:right}
     .trend-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:.9rem}
     .trend-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .trend-btn{padding:5px 12px;border-radius:999px;font-size:.8rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);transition:all .18s}
@@ -164,8 +174,11 @@
     </div>
 
     <div class="trend-wrap">
-      <div id="agg-scroll-inner" style="min-width:600px">
-        <svg id="agg-chart" class="chart-svg" viewBox="0 0 600 230" preserveAspectRatio="xMinYMin meet" aria-label="Average power per time period"></svg>
+      <div class="chart-stage" id="agg-stage">
+        <div id="agg-scroll-inner" style="min-width:600px">
+          <svg id="agg-chart" class="chart-svg" viewBox="0 0 600 230" preserveAspectRatio="xMinYMin meet" aria-label="Average power per time period"></svg>
+        </div>
+        <div id="agg-tooltip" class="chart-tooltip" aria-hidden="true"></div>
       </div>
     </div>
     <div class="chart-legend">
@@ -195,8 +208,11 @@
       </div>
     </div>
     <div class="trend-wrap">
-      <div id="trend-scroll-inner" style="min-width:600px">
-        <svg id="trend-chart" class="chart-svg" viewBox="0 0 600 230" preserveAspectRatio="xMinYMin meet" aria-label="Recent power trend"></svg>
+      <div class="chart-stage" id="trend-stage">
+        <div id="trend-scroll-inner" style="min-width:600px">
+          <svg id="trend-chart" class="chart-svg" viewBox="0 0 600 230" preserveAspectRatio="xMinYMin meet" aria-label="Recent power trend"></svg>
+        </div>
+        <div id="trend-tooltip" class="chart-tooltip" aria-hidden="true"></div>
       </div>
     </div>
     <div class="trend-meta">
@@ -374,6 +390,111 @@ function niceYTicks(min, max, targetTicks = 5) {
   return { min: niceMin, max: niceMax, ticks };
 }
 
+function formatPowerLine(value) {
+  return `${Number(value || 0).toFixed(1)} W`;
+}
+
+function formatTooltipRows(rows) {
+  return rows.map(row => `
+    <div class="chart-tooltip-row">
+      <span>${escapeXml(row.label)}</span>
+      <strong>${escapeXml(row.value)}</strong>
+    </div>
+  `).join('');
+}
+
+function renderTooltipBox(title, rows) {
+  return `<div class="chart-tooltip-title">${escapeXml(title)}</div>${formatTooltipRows(rows)}`;
+}
+
+function placeTooltip(stage, tooltip, clientX, clientY) {
+  const stageRect = stage.getBoundingClientRect();
+  const margin = 12;
+  tooltip.style.display = 'block';
+  tooltip.style.visibility = 'hidden';
+  tooltip.style.left = '0px';
+  tooltip.style.top = '0px';
+
+  const tipW = tooltip.offsetWidth;
+  const tipH = tooltip.offsetHeight;
+  let left = clientX - stageRect.left + 14;
+  let top = clientY - stageRect.top - tipH - 14;
+
+  if (left + tipW > stageRect.width - margin) left = stageRect.width - tipW - margin;
+  if (left < margin) left = margin;
+  if (top < margin) top = clientY - stageRect.top + 18;
+  if (top + tipH > stageRect.height - margin) top = stageRect.height - tipH - margin;
+  if (top < margin) top = margin;
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+  tooltip.style.visibility = 'visible';
+}
+
+function hideTooltip(tooltip, groups) {
+  tooltip.style.display = 'none';
+  tooltip.setAttribute('aria-hidden', 'true');
+  groups.forEach(group => group.classList.remove('is-active'));
+}
+
+function addHoverMarkers(layout, items) {
+  if (!layout || !items.length) return '';
+  return items.map((_, index) => {
+    const x = layout.xOf(index);
+    return `
+      <g class="chart-hover-group" data-hover-index="${index}">
+        <line class="chart-marker-line" x1="${x}" y1="${layout.M.top}" x2="${x}" y2="${layout.M.top + layout.plotH}"/>
+        <rect class="chart-hit" x="${x - 7}" y="${layout.M.top}" width="14" height="${layout.plotH}" tabindex="0" aria-hidden="true"/>
+      </g>
+    `;
+  }).join('');
+}
+
+function bindChartHover({ svgId, stageId, tooltipId, items, getTooltip }) {
+  const svg = document.getElementById(svgId);
+  const stage = document.getElementById(stageId);
+  const tooltip = document.getElementById(tooltipId);
+  if (!svg || !stage || !tooltip) return;
+
+  const groups = [...svg.querySelectorAll('.chart-hover-group')];
+  if (!groups.length) {
+    hideTooltip(tooltip, []);
+    return;
+  }
+
+  const showFor = (group, event) => {
+    const index = Number(group.dataset.hoverIndex);
+    const item = items[index];
+    if (!item) return;
+
+    const payload = getTooltip(item, index);
+    tooltip.innerHTML = renderTooltipBox(payload.title, payload.rows);
+    tooltip.setAttribute('aria-hidden', 'false');
+    placeTooltip(stage, tooltip, event.clientX, event.clientY);
+    groups.forEach(entry => entry.classList.toggle('is-active', entry === group));
+  };
+
+  const moveFor = event => {
+    if (tooltip.style.display === 'block') {
+      placeTooltip(stage, tooltip, event.clientX, event.clientY);
+    }
+  };
+
+  const hide = () => hideTooltip(tooltip, groups);
+
+  groups.forEach(group => {
+    const hit = group.querySelector('.chart-hit');
+    if (!hit) return;
+    hit.addEventListener('mouseenter', event => showFor(group, event));
+    hit.addEventListener('mousemove', moveFor);
+    hit.addEventListener('mouseleave', hide);
+    hit.addEventListener('focus', event => showFor(group, event));
+    hit.addEventListener('blur', hide);
+  });
+
+  svg.addEventListener('mouseleave', hide);
+}
+
 function formatYLabel(v) {
   const abs = Math.abs(v);
   if (abs >= 1000) return `${(v / 1000).toFixed(1)}k`;
@@ -540,6 +661,30 @@ function drawTrend() {
     xTitle: 'Time'
   });
 
+  const svg = document.getElementById('trend-chart');
+  svg.insertAdjacentHTML('beforeend', addHoverMarkers(st.layout, slice));
+  bindChartHover({
+    svgId: 'trend-chart',
+    stageId: 'trend-stage',
+    tooltipId: 'trend-tooltip',
+    items: slice,
+    getTooltip: (item, index) => {
+      const windowStart = Math.max(0, index - 3);
+      const windowEnd = Math.min(slice.length, index + 4);
+      const windowItems = slice.slice(windowStart, windowEnd);
+      const windowVals = windowItems.map(entry => Number(entry.power || 0));
+
+      return {
+      title: 'Reading',
+      rows: [
+        { label: 'Time', value: fmtLong(parseTs(item.timestamp)) },
+        { label: 'Avg power', value: formatPowerLine(windowVals.reduce((a, b) => a + b, 0) / Math.max(windowVals.length, 1)) },
+        { label: 'Peak power', value: formatPowerLine(Math.max(...windowVals, Number(item.power || 0))) }
+      ]
+      };
+    }
+  });
+
   document.getElementById('trend-min').textContent = `Min: ${st.min.toFixed(1)} W`;
   document.getElementById('trend-max').textContent = `Max: ${st.max.toFixed(1)} W`;
   document.getElementById('trend-avg').textContent = `Avg: ${st.avg.toFixed(1)} W`;
@@ -624,26 +769,30 @@ function drawAggChart(data) {
 
   const avgVals = agg.map(x => x.avgPower);
   const peakVals = agg.map(x => x.peakPower);
-  drawLine('agg-chart', 'agg-scroll-inner', avgVals, '#38bdf8', 0.08);
+  const st = drawLine('agg-chart', 'agg-scroll-inner', avgVals, '#38bdf8', 0.08);
 
   const svg = document.getElementById('agg-chart');
-  const viewBox = svg.getAttribute('viewBox').split(' ');
-  const W = Number(viewBox[2]);
-  const CH = 160;
-  const pad = 18;
-
-  const mn = Math.min(...avgVals, 0);
-  const mx = Math.max(...peakVals, ...avgVals, 0);
-  const rng = Math.max(mx - mn, 1);
-
-  const xOf = i => pad + (i * (W - pad * 2)) / Math.max(agg.length - 1, 1);
-  const yOf = v => CH - pad - ((v - mn) / rng) * (CH - pad * 2);
-
   const peakDots = peakVals.map((v, i) =>
-    `<circle cx="${xOf(i)}" cy="${yOf(v)}" r="4" fill="#f59e0b" opacity=".45"/>`
+    `<circle cx="${st.layout.xOf(i)}" cy="${st.layout.yOf(v)}" r="4" fill="#f59e0b" opacity=".45"/>`
   ).join('');
 
-  svg.innerHTML += peakDots;
+  svg.insertAdjacentHTML('beforeend', addHoverMarkers(st.layout, agg));
+  svg.insertAdjacentHTML('beforeend', peakDots);
+
+  bindChartHover({
+    svgId: 'agg-chart',
+    stageId: 'agg-stage',
+    tooltipId: 'agg-tooltip',
+    items: agg,
+    getTooltip: item => ({
+      title: 'Period',
+      rows: [
+        { label: 'Period', value: item.label },
+        { label: 'Avg power', value: formatPowerLine(item.avgPower) },
+        { label: 'Peak power', value: formatPowerLine(item.peakPower) }
+      ]
+    })
+  });
 
   const overallAvg = avgVals.reduce((a, b) => a + b, 0) / Math.max(avgVals.length, 1);
   const overallPeak = Math.max(...peakVals, 0);
